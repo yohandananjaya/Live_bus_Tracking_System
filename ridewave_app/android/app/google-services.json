@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "441162316910",
+    "project_id": "ridewave-af666",
+    "storage_bucket": "ridewave-af666.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:441162316910:android:968e9806da9bc428d0fa7f",
+        "android_client_info": {
+          "package_name": "com.example.ridewave_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8vKSThfdf5IlXTOZ8HbUDSe9ujTHoB_Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
