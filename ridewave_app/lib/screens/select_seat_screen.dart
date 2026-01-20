@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SelectSeatScreen extends StatefulWidget {
-  // Home Screen එකෙන් එවන ඩේටා ලබාගන්න variables
   final String busId;
   final String busName;
   final String route;
@@ -22,8 +23,54 @@ class SelectSeatScreen extends StatefulWidget {
 }
 
 class _SelectSeatScreenState extends State<SelectSeatScreen> {
-  // මම තෝරාගත් සීට් ලිස්ට් එක
   List<String> selectedSeats = [];
+  bool _isProcessing = false; // බුක් වෙනකම් ලෝඩ් වෙන එක පෙන්නන්න
+
+  // --- Booking Confirm කරන Function එක ---
+  Future<void> _confirmBooking() async {
+    setState(() => _isProcessing = true);
+
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please login to book seats.")));
+      setState(() => _isProcessing = false);
+      return;
+    }
+
+    try {
+      // 1. ගාණ හදාගන්නවා
+      double unitPrice = double.tryParse(widget.price) ?? 0;
+      double totalPrice = selectedSeats.length * unitPrice;
+
+      // 2. Booking එක Database එකට Save කරනවා ('bookings' collection එකට)
+      await FirebaseFirestore.instance.collection('bookings').add({
+        'userId': user.uid,
+        'busId': widget.busId,
+        'busName': widget.busName,
+        'route': widget.route,
+        'seats': selectedSeats,
+        'totalPrice': totalPrice,
+        'status': 'upcoming', // මුලින්ම Upcoming වලට වැටෙන්නේ
+        'bookingDate': FieldValue.serverTimestamp(),
+        'busNo': widget.busName, // බස් නම/අංකය
+      });
+
+      // 3. බස් එකේ Booked Seats ලිස්ට් එක Update කරනවා (අනිත් අයට ආයේ මේවා බුක් කරන්න බැරි වෙන්න)
+      await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({
+        'bookedSeats': FieldValue.arrayUnion(selectedSeats),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Booking Successful!")));
+        Navigator.pop(context); // Home එකට යනවා
+      }
+
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +84,7 @@ class _SelectSeatScreenState extends State<SelectSeatScreen> {
       ),
       body: Column(
         children: [
-          // Bus Info Header
+          // Header
           Container(
             margin: const EdgeInsets.all(20),
             padding: const EdgeInsets.all(15),
@@ -71,7 +118,7 @@ class _SelectSeatScreenState extends State<SelectSeatScreen> {
 
           const SizedBox(height: 20),
 
-          // Driver Area
+          // Driver
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 40),
             padding: const EdgeInsets.all(10),
@@ -81,26 +128,19 @@ class _SelectSeatScreenState extends State<SelectSeatScreen> {
           
           const SizedBox(height: 20),
 
-          // Seats Layout
+          // Seats Grid
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 30.0),
               child: GridView.builder(
-                itemCount: 32, // සීට් ගාණ
+                itemCount: 32,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 20,
-                  childAspectRatio: 1.2,
+                  crossAxisCount: 4, mainAxisSpacing: 10, crossAxisSpacing: 20, childAspectRatio: 1.2,
                 ),
                 itemBuilder: (context, index) {
-                  // Aisle
-                  if (index % 4 == 2 && index < 28) return const SizedBox(); 
+                  if (index % 4 == 2 && index < 28) return const SizedBox(); // Aisle
 
-                  // Seat No logic (A1, A2...)
                   String seatNo = "${String.fromCharCode(65 + (index / 4).floor())}${(index % 4) + 1}";
-                  
-                  // Check status
                   bool isBooked = widget.bookedSeats.contains(seatNo);
                   bool isSelected = selectedSeats.contains(seatNo);
 
@@ -121,11 +161,7 @@ class _SelectSeatScreenState extends State<SelectSeatScreen> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: isBooked ? Colors.transparent : Colors.grey[300]!),
                       ),
-                      child: Center(
-                        child: Text(seatNo, style: TextStyle(
-                          color: isSelected ? Colors.white : (isBooked ? Colors.grey : Colors.black)
-                        )),
-                      ),
+                      child: Center(child: Text(seatNo, style: TextStyle(color: isSelected ? Colors.white : (isBooked ? Colors.grey : Colors.black)))),
                     ),
                   );
                 },
@@ -133,22 +169,17 @@ class _SelectSeatScreenState extends State<SelectSeatScreen> {
             ),
           ),
 
-          // Bottom Bar (Confirm)
+          // Confirm Button
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: Colors.grey, width: 0.2)),
-            ),
+            decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey, width: 0.2))),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text("Selected: ${selectedSeats.join(', ')}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                    // Price calculation logic can be added here
-                    Text("Total: Rs. ${selectedSeats.length * (double.tryParse(widget.price) ?? 0)}", 
-                         style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 18)),
+                    Text("Total: Rs. ${selectedSeats.length * (double.tryParse(widget.price) ?? 0)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 18)),
                   ],
                 ),
                 const SizedBox(height: 15),
@@ -156,16 +187,11 @@ class _SelectSeatScreenState extends State<SelectSeatScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: selectedSeats.isEmpty ? null : () {
-                      // Booking Logic goes here (Update Firebase)
-                      print("Booking Confirmed: $selectedSeats for Bus ${widget.busId}");
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Booking Request Sent!")));
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: const Text("Confirm Booking", style: TextStyle(color: Colors.white, fontSize: 18)),
+                    onPressed: (selectedSeats.isEmpty || _isProcessing) ? null : _confirmBooking,
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                    child: _isProcessing 
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text("Confirm Booking", style: TextStyle(color: Colors.white, fontSize: 18)),
                   ),
                 ),
               ],
@@ -177,19 +203,6 @@ class _SelectSeatScreenState extends State<SelectSeatScreen> {
   }
 
   Widget _buildLegendItem(Color color, String label, {bool hasBorder = false}) {
-    return Row(
-      children: [
-        Container(
-          width: 20, height: 20,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(5),
-            border: hasBorder ? Border.all(color: Colors.grey[300]!) : null,
-          ),
-        ),
-        const SizedBox(width: 5),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
-    );
+    return Row(children: [Container(width: 20, height: 20, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(5), border: hasBorder ? Border.all(color: Colors.grey[300]!) : null)), const SizedBox(width: 5), Text(label, style: const TextStyle(fontSize: 12))]);
   }
 }
