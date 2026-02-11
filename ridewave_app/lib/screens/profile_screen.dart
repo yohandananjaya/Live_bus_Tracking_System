@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'login_screen.dart'; // Sign Out වුනාම Login එකට යන්න
-import 'owner/owner_dashboard.dart'; // Owner Dashboard එකට යන්න
+import 'login_screen.dart'; // Sign Out logic
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -21,16 +20,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserData();
   }
 
-  // User Data අලුතෙන් Load කරගන්න Function එක
+  // Reload User Data
   Future<void> _loadUserData() async {
     user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      await user!.reload(); // Firebase වලින් අලුත්ම විස්තර අදින්න
-      user = FirebaseAuth.instance.currentUser; // Update වුන User ව ආයේ ගන්න
+      await user!.reload();
+      user = FirebaseAuth.instance.currentUser;
       
       if (mounted) {
         setState(() {
-          // නමක් නැත්නම් විතරක් "User" කියලා පෙන්වන්න
           userName = user?.displayName ?? "User"; 
           userEmail = user?.email ?? "No Email";
         });
@@ -109,18 +107,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Switch to Owner Mode
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const OwnerDashboard()),
-                        );
-                      },
-                      child: _buildProfileItem(Icons.directions_bus, "Switch to Owner Mode", true),
-                    ),
+                    // Removed "Switch to Owner Mode" as per request
                     
-                    const Divider(height: 1),
                     _buildProfileItem(Icons.notifications_outlined, "Notifications", false),
                     const Divider(height: 1),
                     _buildProfileItem(Icons.language, "Language", false),
@@ -165,9 +153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Icon(icon, color: Colors.black87, size: 20),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-      trailing: isSwitch 
-        ? const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.blue) 
-        : const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
     );
   }
 }

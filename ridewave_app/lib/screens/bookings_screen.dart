@@ -35,23 +35,23 @@ class BookingsScreen extends StatelessWidget {
         body: TabBarView(
           children: [
             // 1. Upcoming Bookings Tab
-            _buildBookingList(user.uid, 'upcoming'),
+            _buildBookingList(context, user.uid, 'upcoming'),
             
             // 2. Completed Bookings Tab
-            _buildBookingList(user.uid, 'completed'),
+            _buildBookingList(context, user.uid, 'completed'),
           ],
         ),
       ),
     );
   }
 
-  // Booking List එක හදන Widget එක (Database එකෙන් දත්ත ගනී)
-  Widget _buildBookingList(String userId, String status) {
+  // Booking List Widget
+  Widget _buildBookingList(BuildContext context, String userId, String status) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('bookings')
           .where('userId', isEqualTo: userId)
-          .where('status', isEqualTo: status) // upcoming හෝ completed අනුව පෙරනවා
+          .where('status', isEqualTo: status) // Filter by status (upcoming/completed)
           .orderBy('bookingDate', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
@@ -79,15 +79,18 @@ class BookingsScreen extends StatelessWidget {
             var doc = snapshot.data!.docs[index];
             var data = doc.data() as Map<String, dynamic>;
 
-            // දත්ත ලබා ගැනීම
+            // Get Data
+            String bookingId = doc.id;
+            String busId = data['busId'] ?? '';
             String busName = data['busName'] ?? 'Bus';
             String route = data['route'] ?? '';
-            String seats = (data['seats'] as List<dynamic>).join(', ');
+            List<dynamic> seats = data['seats'] ?? [];
+            String seatsString = seats.join(', ');
             String price = "Rs. ${data['totalPrice']}";
             bool isUpcoming = status == 'upcoming';
 
             return _buildBookingCard(
-              busName, route, seats, price, isUpcoming
+              context, bookingId, busId, busName, route, seatsString, seats, price, isUpcoming
             );
           },
         );
@@ -95,7 +98,28 @@ class BookingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBookingCard(String busName, String route, String seats, String price, bool isUpcoming) {
+  // --- Cancel Booking Function ---
+  Future<void> _cancelBooking(BuildContext context, String bookingId, String busId, List<dynamic> seats) async {
+    try {
+      // 1. Delete the Booking Document
+      await FirebaseFirestore.instance.collection('bookings').doc(bookingId).delete();
+
+      // 2. Remove booked seats from the Bus Document
+      await FirebaseFirestore.instance.collection('buses').doc(busId).update({
+        'bookedSeats': FieldValue.arrayRemove(seats)
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Booking Cancelled Successfully")));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error cancelling: $e")));
+      }
+    }
+  }
+
+  Widget _buildBookingCard(BuildContext context, String bookingId, String busId, String busName, String route, String seatsString, List<dynamic> seatList, String price, bool isUpcoming) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(20),
@@ -152,7 +176,7 @@ class BookingsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text("Seats", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  Text(seats, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(seatsString, style: const TextStyle(fontWeight: FontWeight.bold)),
                 ],
               ),
               Column(
@@ -169,9 +193,7 @@ class BookingsScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () {
-                  // Cancel logic here if needed
-                },
+                onPressed: () => _cancelBooking(context, bookingId, busId, seatList),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.red),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))

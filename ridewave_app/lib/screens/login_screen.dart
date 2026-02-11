@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'signup_screen.dart';
 import 'main_layout.dart';
+import 'driver/driver_login_screen.dart'; // 1. අලුත් Import එක
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,10 +24,14 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text.trim(),
       );
       if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainLayout()));
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (context) => const MainLayout()));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login Failed: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Login Failed: $e")));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -47,7 +52,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Icon(Icons.directions_bus, size: 80, color: Colors.white),
                     SizedBox(height: 10),
-                    Text('RideWave', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white)),
+                    Text('RideWave',
+                        style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white)),
                   ],
                 ),
               ),
@@ -58,37 +67,93 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.all(30),
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
+                  borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30)),
                 ),
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      const Text('Welcome Back', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                      const Text('Welcome Back',
+                          style: TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 30),
                       TextField(
                         controller: _emailController,
-                        decoration: InputDecoration(prefixIcon: const Icon(Icons.email_outlined), labelText: 'Email', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+                        decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.email_outlined),
+                            labelText: 'Email',
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10))),
                       ),
                       const SizedBox(height: 15),
                       TextField(
                         controller: _passwordController,
                         obscureText: true,
-                        decoration: InputDecoration(prefixIcon: const Icon(Icons.lock_outline), labelText: 'Password', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))),
+                        decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            labelText: 'Password',
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10))),
                       ),
                       const SizedBox(height: 20),
+                      
+                      // --- Sign In Button ---
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _signIn,
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                          child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Sign In', style: TextStyle(color: Colors.white, fontSize: 18)),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10))),
+                          child: _isLoading
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text('Sign In',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 18)),
                         ),
                       ),
+                      
                       const SizedBox(height: 20),
+
+                      // --- 2. NEW: Driver Login Button ---
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const DriverLoginScreen()),
+                          );
+                        },
+                        child: const Text(
+                          "Login as a Driver / Partner",
+                          style: TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // --- Sign Up Link ---
                       GestureDetector(
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpScreen())),
-                        child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text("Don't have an account? "), Text("Sign Up", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))]),
+                        onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const SignUpScreen())),
+                        child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text("Don't have an account? "),
+                              Text("Sign Up",
+                                  style: TextStyle(
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.bold))
+                            ]),
                       ),
                     ],
                   ),
