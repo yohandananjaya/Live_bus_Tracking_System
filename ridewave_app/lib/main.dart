@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Import
 import 'screens/login_screen.dart';
 import 'screens/main_layout.dart';
-import 'screens/driver/driver_dashboard.dart'; // Import Driver Dashboard
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,15 +17,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'RideWave',
+      title: 'RideWave Passenger',
       theme: ThemeData(primarySwatch: Colors.blue),
-      // home: const LoginScreen(), <-- මේක අයින් කරන්න. අපි තීරණය කරනවා යන්න ඕනේ කොහාටද කියලා.
-      home: const AuthCheck(), // අලුත් Widget එක
+      home: const AuthCheck(),
     );
   }
 }
 
-// මේකෙන් තමයි Check කරන්නේ කොහාටද යවන්න ඕනේ කියලා
 class AuthCheck extends StatefulWidget {
   const AuthCheck({super.key});
 
@@ -37,7 +33,7 @@ class AuthCheck extends StatefulWidget {
 
 class _AuthCheckState extends State<AuthCheck> {
   bool _isLoading = true;
-  Widget _startScreen = const LoginScreen(); // Default
+  Widget _startScreen = const LoginScreen();
 
   @override
   void initState() {
@@ -46,36 +42,20 @@ class _AuthCheckState extends State<AuthCheck> {
   }
 
   Future<void> _checkLoginState() async {
-    // 1. Check Driver Login (Shared Preferences)
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool isDriver = prefs.getBool('isDriverLoggedIn') ?? false;
-    String? driverBusId = prefs.getString('driverBusId');
-
-    if (isDriver && driverBusId != null) {
-      // Driver කෙනෙක් නම් Dashboard එකට යවන්න
-      setState(() {
-        _startScreen = DriverDashboard(busId: driverBusId);
-        _isLoading = false;
-      });
-      return;
-    }
-
-    // 2. Check Passenger Login (Firebase Auth)
+    // Passenger කෙනෙක් ලොග් වෙලාද බලනවා (Firebase Auth)
     User? user = FirebaseAuth.instance.currentUser;
+
     if (user != null) {
-      // Passenger කෙනෙක් නම් Main Layout එකට යවන්න
       setState(() {
-        _startScreen = const MainLayout();
+        _startScreen = const MainLayout(); // කෙලින්ම Passenger Home එකට
         _isLoading = false;
       });
-      return;
+    } else {
+      setState(() {
+        _startScreen = const LoginScreen(); // නැත්නම් Login එකට
+        _isLoading = false;
+      });
     }
-
-    // 3. කවුරුත් නැත්නම් Login Screen
-    setState(() {
-      _startScreen = const LoginScreen();
-      _isLoading = false;
-    });
   }
 
   @override

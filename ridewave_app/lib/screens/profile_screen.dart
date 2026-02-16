@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'login_screen.dart'; // Sign Out logic
+import 'login_screen.dart';
+import 'notifications_screen.dart'; // Notification Screen එක Import කරන්න
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -20,7 +21,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserData();
   }
 
-  // Reload User Data
   Future<void> _loadUserData() async {
     user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -36,7 +36,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Sign Out Function
   void _signOut(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
     if (context.mounted) {
@@ -45,6 +44,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         MaterialPageRoute(builder: (context) => const LoginScreen()),
       );
     }
+  }
+
+  // පොඩි Popup එකක් පෙන්වන්න (Language/Help වගේ ඒවට)
+  void _showComingSoon(String title) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("$title feature is coming soon!")),
+    );
   }
 
   @override
@@ -79,18 +85,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Icon(Icons.person, size: 40, color: Colors.white),
                     ),
                     const SizedBox(width: 15),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(userName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        Text(userEmail, style: const TextStyle(color: Colors.grey)),
-                        const SizedBox(height: 5),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.blue[100], borderRadius: BorderRadius.circular(10)),
-                          child: const Text("Passenger", style: TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.bold)),
-                        )
-                      ],
+                    Expanded( // Text overflow නොවෙන්න Expanded දැම්මා
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(userName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(userEmail, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                          const SizedBox(height: 5),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: Colors.blue[100], borderRadius: BorderRadius.circular(10)),
+                            child: const Text("Passenger", style: TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.bold)),
+                          )
+                        ],
+                      ),
                     )
                   ],
                 ),
@@ -98,7 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               const SizedBox(height: 30),
 
-              // Settings List
+              // Settings List with Navigation
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -107,13 +115,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Removed "Switch to Owner Mode" as per request
+                    // Notifications Page එකට යවන්න
+                    _buildProfileItem(
+                      Icons.notifications_outlined, 
+                      "Notifications", 
+                      onTap: () {
+                        // Main Layout එකේ Tab එක මාරු කරනවා වෙනුවට කෙලින්ම Page එකට යවනවා නම්:
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen()));
+                      }
+                    ),
+                    const Divider(height: 1),
                     
-                    _buildProfileItem(Icons.notifications_outlined, "Notifications", false),
+                    // Language (Placeholder)
+                    _buildProfileItem(Icons.language, "Language", onTap: () => _showComingSoon("Language Selection")),
                     const Divider(height: 1),
-                    _buildProfileItem(Icons.language, "Language", false),
-                    const Divider(height: 1),
-                    _buildProfileItem(Icons.help_outline, "Help & Support", false),
+                    
+                    // Help (Placeholder)
+                    _buildProfileItem(Icons.help_outline, "Help & Support", onTap: () => _showComingSoon("Support Center")),
                   ],
                 ),
               ),
@@ -145,8 +163,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileItem(IconData icon, String title, bool isSwitch) {
+  Widget _buildProfileItem(IconData icon, String title, {required VoidCallback onTap}) {
     return ListTile(
+      onTap: onTap, // Click කළාම වැඩ කරන්න
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle),

@@ -22,7 +22,8 @@ class _DashboardState extends State<Dashboard> {
   final LocationService _locationService = LocationService();
   bool _isLoading = false;
 
-  // --- 🔥 Trip End Logic with Revenue Reset & History Save ---
+ 
+// --- 🔥 Modified _toggleTrip Function ---
   void _toggleTrip(bool isLive, double currentRevenue) async {
     if (isLive) {
       // 1. END JOURNEY
@@ -40,28 +41,46 @@ class _DashboardState extends State<Dashboard> {
       // B. Main Revenue එක 0 කරලා Status එක Idle කරනවා
       await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({
         'status': 'Idle',
-        'totalRevenue': 0, // Reset to 0
+        'totalRevenue': 0, 
       });
       
       setState(() => _isLoading = false);
 
-      // C. Ask to clear seats (Optional Dialog - කලින් කෝඩ් එකේ තිබුණ එක)
+      // C. Ask to clear seats AND Complete Bookings
       if (mounted) {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text("Journey Ended"),
-            content: const Text("Revenue saved to history. Clear seats now?"),
+            content: const Text("Clear seats and mark all current bookings as Completed?"),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Keep Seats")),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("No, Keep Active")),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
                 onPressed: () async {
+                  Navigator.pop(ctx); // Close Dialog first
+                  
+                  // 1. Seats Clear කරනවා
                   await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({'bookedSeats': []});
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Seats Cleared!")));
+
+                  // 2. 🔥 NEW: මේ බස් එකේ Active Bookings ඔක්කොම 'completed' කරනවා
+                  var batch = FirebaseFirestore.instance.batch();
+                  var snapshots = await FirebaseFirestore.instance
+                      .collection('bookings')
+                      .where('busId', isEqualTo: widget.busId)
+                      .where('status', isEqualTo: 'confirmed') // Confirmed ඒවා විතරක්
+                      .get();
+
+                  for (var doc in snapshots.docs) {
+                    batch.update(doc.reference, {'status': 'completed'});
+                  }
+                  await batch.commit(); // ඔක්කොම එකපාර Update වෙනවා
+
+                  if(mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Journey Finished & Bookings Completed!")));
+                  }
                 }, 
-                child: const Text("Clear Seats", style: TextStyle(color: Colors.white))
+                child: const Text("Yes, Finish All", style: TextStyle(color: Colors.white))
               ),
             ],
           ),

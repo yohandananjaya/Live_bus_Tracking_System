@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'signup_screen.dart';
 import 'main_layout.dart';
-import 'driver/driver_login_screen.dart'; // 1. අලුත් Import එක
+import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -74,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      const Text('Welcome Back',
+                      const Text('Welcome Passenger',
                           style: TextStyle(
                               fontSize: 24, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 30),
@@ -117,27 +116,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       
                       const SizedBox(height: 20),
-
-                      // --- 2. NEW: Driver Login Button ---
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const DriverLoginScreen()),
-                          );
-                        },
-                        child: const Text(
-                          "Login as a Driver / Partner",
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
 
                       // --- Sign Up Link ---
                       GestureDetector(

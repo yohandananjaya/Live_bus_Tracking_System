@@ -1,37 +1,121 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
+  String _formatTimestamp(Timestamp? timestamp) {
+    if (timestamp == null) return "Just now";
+    DateTime date = timestamp.toDate();
+    if (DateTime.now().difference(date).inDays == 0) {
+      return DateFormat('h:mm a').format(date);
+    } else {
+      return DateFormat('MMM d, h:mm a').format(date);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const Center(child: Text("Please Login"));
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Notifications", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Alerts", style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black,
-        automaticallyImplyLeading: false, // Back arrow එක අයින් කරන්න
+        automaticallyImplyLeading: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: ListView(
-          children: [
-            _buildNotificationCard(
-              Icons.directions_bus, Colors.blue, "Bus KY-1234 Delayed", "Your bus will arrive 10 minutes late due to traffic.", "10 minutes ago", Colors.blue[50]!
-            ),
-            _buildNotificationCard(
-              Icons.check_circle, Colors.green, "Booking Confirmed", "Your seat A4 has been confirmed for Kandy to Colombo.", "2 hours ago", Colors.green[50]!
-            ),
-            _buildNotificationCard(
-              Icons.location_on, Colors.orange, "Route Change", "Bus CM-5678 route has been changed due to road construction.", "Yesterday", Colors.orange[50]!
-            ),
-            _buildNotificationCard(
-              Icons.warning, Colors.red, "Weather Alert", "Heavy rain expected on your route. Please plan accordingly.", "2 days ago", Colors.red[50]!
-            ),
-          ],
-        ),
+      // 1. මුලින්ම User ගේ Active Bookings ටික හොයාගන්නවා
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('bookings')
+            .where('userId', isEqualTo: user.uid)
+            .where('status', whereIn: ['confirmed', 'upcoming']) // Active ඒවා විතරයි
+            .snapshots(),
+        builder: (context, bookingSnapshot) {
+          if (bookingSnapshot.hasError) return const Center(child: Text("Error loading data"));
+          if (bookingSnapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+
+          // User ට Active Bookings මුකුත් නැත්නම් Notification පෙන්නන්නේ නෑ
+          if (!bookingSnapshot.hasData || bookingSnapshot.data!.docs.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          // Active බස් වල ID ටික ලිස්ට් එකකට ගන්නවා
+          List<String> activeBusIds = bookingSnapshot.data!.docs
+              .map((doc) => doc['busId'] as String)
+              .toSet() // එකම බස් එකේ බුකින් 2ක් තිබුනොත් එකක් විතරක් ගන්න
+              .toList();
+
+          // 2. දැන් ඒ Bus ID වලට අදාල Notifications විතරක් ගන්නවා
+          return StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('notifications')
+                .where('busId', whereIn: activeBusIds) // 🔥 Filter by Active Buses Only
+                .orderBy('timestamp', descending: true)
+                .snapshots(),
+            builder: (context, notifSnapshot) {
+              if (notifSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!notifSnapshot.hasData || notifSnapshot.data!.docs.isEmpty) {
+                 return _buildEmptyState();
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(20),
+                itemCount: notifSnapshot.data!.docs.length,
+                itemBuilder: (context, index) {
+                  var data = notifSnapshot.data!.docs[index].data() as Map<String, dynamic>;
+                  
+                  String message = data['message'] ?? "No details";
+                  Timestamp? time = data['timestamp'];
+
+                  IconData icon = Icons.notifications_active;
+                  Color color = Colors.blue;
+                  Color bgColor = Colors.blue[50]!;
+                  String title = "Update";
+
+                  if (message.toLowerCase().contains("delay") || message.toLowerCase().contains("breakdown")) {
+                    icon = Icons.warning_amber_rounded;
+                    color = Colors.orange;
+                    bgColor = Colors.orange[50]!;
+                    title = "Travel Alert";
+                  } else if (message.toLowerCase().contains("cancel")) {
+                    icon = Icons.cancel;
+                    color = Colors.red;
+                    bgColor = Colors.red[50]!;
+                    title = "Cancelled";
+                  }
+
+                  return _buildNotificationCard(
+                    icon, color, title, message, _formatTimestamp(time), bgColor
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.notifications_none, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 15),
+          Text("No active alerts", style: TextStyle(color: Colors.grey[500])),
+          Text("Book a bus to see updates here.", style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+        ],
       ),
     );
   }

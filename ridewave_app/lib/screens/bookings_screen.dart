@@ -28,30 +28,30 @@ class BookingsScreen extends StatelessWidget {
             indicatorColor: Colors.blue,
             tabs: [
               Tab(text: "Upcoming"),
-              Tab(text: "Completed"),
+              Tab(text: "History"), // නම වෙනස් කළා 'History' කියලා (Completed + Confirmed)
             ],
           ),
         ),
         body: TabBarView(
           children: [
-            // 1. Upcoming Bookings Tab
-            _buildBookingList(context, user.uid, 'upcoming'),
+            // 1. Upcoming Tab (Pending හෝ Upcoming ඒවා)
+            _buildBookingList(context, user.uid, ['upcoming', 'pending']),
             
-            // 2. Completed Bookings Tab
-            _buildBookingList(context, user.uid, 'completed'),
+            // 2. History Tab (Driver Confirm කරපු ඒවා සහ Complete වුන ඒවා)
+            _buildBookingList(context, user.uid, ['confirmed', 'completed']),
           ],
         ),
       ),
     );
   }
 
-  // Booking List Widget
-  Widget _buildBookingList(BuildContext context, String userId, String status) {
+  // Booking List Widget (Updated to accept a List of statuses)
+  Widget _buildBookingList(BuildContext context, String userId, List<String> statusList) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('bookings')
           .where('userId', isEqualTo: userId)
-          .where('status', isEqualTo: status) // Filter by status (upcoming/completed)
+          .where('status', whereIn: statusList) // වෙනස්කම: isEqualTo වෙනුවට whereIn දැම්මා
           .orderBy('bookingDate', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
@@ -66,7 +66,7 @@ class BookingsScreen extends StatelessWidget {
               children: [
                 Icon(Icons.airplane_ticket_outlined, size: 60, color: Colors.grey[300]),
                 const SizedBox(height: 10),
-                Text("No $status bookings found.", style: TextStyle(color: Colors.grey[500])),
+                Text("No bookings found.", style: TextStyle(color: Colors.grey[500])),
               ],
             ),
           );
@@ -87,10 +87,10 @@ class BookingsScreen extends StatelessWidget {
             List<dynamic> seats = data['seats'] ?? [];
             String seatsString = seats.join(', ');
             String price = "Rs. ${data['totalPrice']}";
-            bool isUpcoming = status == 'upcoming';
+            String status = data['status'] ?? 'upcoming'; // Status එක ගන්නවා
 
             return _buildBookingCard(
-              context, bookingId, busId, busName, route, seatsString, seats, price, isUpcoming
+              context, bookingId, busId, busName, route, seatsString, seats, price, status
             );
           },
         );
@@ -101,10 +101,8 @@ class BookingsScreen extends StatelessWidget {
   // --- Cancel Booking Function ---
   Future<void> _cancelBooking(BuildContext context, String bookingId, String busId, List<dynamic> seats) async {
     try {
-      // 1. Delete the Booking Document
       await FirebaseFirestore.instance.collection('bookings').doc(bookingId).delete();
 
-      // 2. Remove booked seats from the Bus Document
       await FirebaseFirestore.instance.collection('buses').doc(busId).update({
         'bookedSeats': FieldValue.arrayRemove(seats)
       });
@@ -119,7 +117,25 @@ class BookingsScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildBookingCard(BuildContext context, String bookingId, String busId, String busName, String route, String seatsString, List<dynamic> seatList, String price, bool isUpcoming) {
+  Widget _buildBookingCard(BuildContext context, String bookingId, String busId, String busName, String route, String seatsString, List<dynamic> seatList, String price, String status) {
+    
+    // Status එක අනුව පාට තීරණය කිරීම
+    Color statusColor;
+    String statusText;
+    bool showCancelButton = false;
+
+    if (status == 'confirmed') {
+      statusColor = Colors.green;
+      statusText = "Confirmed";
+    } else if (status == 'completed') {
+      statusColor = Colors.grey;
+      statusText = "Completed";
+    } else {
+      statusColor = Colors.orange;
+      statusText = "Scheduled";
+      showCancelButton = true; // Upcoming නම් විතරක් Cancel කරන්න පුළුවන්
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(20),
@@ -141,12 +157,12 @@ class BookingsScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: isUpcoming ? Colors.green[50] : Colors.grey[100], 
+                  color: statusColor.withOpacity(0.1), 
                   borderRadius: BorderRadius.circular(20)
                 ),
                 child: Text(
-                  isUpcoming ? "Scheduled" : "Completed", 
-                  style: TextStyle(color: isUpcoming ? Colors.green : Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)
+                  statusText, 
+                  style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)
                 ),
               ),
             ],
@@ -188,7 +204,9 @@ class BookingsScreen extends StatelessWidget {
               ),
             ],
           ),
-          if (isUpcoming) ...[
+          
+          // Confirmed හෝ Completed ඒවා Cancel කරන්න බැරි වෙන්න හදලා තියෙන්නේ
+          if (showCancelButton) ...[
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
