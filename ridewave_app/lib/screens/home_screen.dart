@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart'; // දුර මනින්න
-import 'select_seat_screen.dart';
+import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
+import 'search_ride_screen.dart'; 
+import 'select_seat_screen.dart'; 
 import 'emergency_screen.dart';
 import 'report_issue_screen.dart';
 
@@ -14,197 +15,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Search සදහා Controllers
-  final TextEditingController _fromController = TextEditingController();
-  final TextEditingController _toController = TextEditingController();
-  
-  String searchFrom = "";
-  String searchTo = "";
+  String _searchFrom = "";
+  String _searchTo = "";
 
-  @override
-  Widget build(BuildContext context) {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-    String name = currentUser?.displayName?.split(" ")[0] ?? "User";
-
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Hi $name 👋", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                      const Text("Where are you going today?", style: TextStyle(color: Colors.grey)),
-                    ],
-                  ),
-                  CircleAvatar(backgroundColor: Colors.blue[100], child: const Icon(Icons.person, color: Colors.blue))
-                ],
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Search Box (From & To)
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5))]),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _fromController,
-                      onChanged: (val) => setState(() => searchFrom = val),
-                      decoration: const InputDecoration(prefixIcon: Icon(Icons.my_location, color: Colors.blue), hintText: "From (Location)", border: InputBorder.none),
-                    ),
-                    const Divider(),
-                    TextField(
-                      controller: _toController,
-                      onChanged: (val) => setState(() => searchTo = val),
-                      decoration: const InputDecoration(prefixIcon: Icon(Icons.location_on, color: Colors.red), hintText: "To (Destination)", border: InputBorder.none),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 30),
-              
-              // Action Buttons
-              Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-                _buildActionButton(context, Icons.call, "Emergency", Colors.red, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const EmergencyScreen()))),
-                _buildActionButton(context, Icons.report_problem, "Report Issue", Colors.orange, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportIssueScreen()))),
-              ]),
-              
-              const SizedBox(height: 30),
-              
-              // Filtered Bus List
-              const Text("Available Buses", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 15),
-
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('buses').where('status', isEqualTo: 'Live').snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
-                  var buses = snapshot.data!.docs;
-
-                  // Client-side Filtering (Search Logic)
-                  var filteredBuses = buses.where((doc) {
-                    var data = doc.data() as Map<String, dynamic>;
-                    String routeFrom = (data['routeFrom'] ?? "").toString().toLowerCase();
-                    String routeTo = (data['routeTo'] ?? "").toString().toLowerCase();
-
-                    bool matchFrom = searchFrom.isEmpty || routeFrom.contains(searchFrom.toLowerCase());
-                    bool matchTo = searchTo.isEmpty || routeTo.contains(searchTo.toLowerCase());
-
-                    return matchFrom && matchTo;
-                  }).toList();
-
-                  if (filteredBuses.isEmpty) {
-                    return const Center(child: Text("No buses found for this route.", style: TextStyle(color: Colors.grey)));
-                  }
-
-                  return ListView.builder(
-                    shrinkWrap: true, // Scroll View ඇතුලේ ලිස්ට් එකක් නිසා
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: filteredBuses.length,
-                    itemBuilder: (context, index) {
-                      var doc = filteredBuses[index];
-                      var data = doc.data() as Map<String, dynamic>;
-                      return _buildBusCard(context, doc.id, data);
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Action Button Widget
-  Widget _buildActionButton(BuildContext context, IconData icon, String label, Color color, VoidCallback onTap) {
-    return GestureDetector(onTap: onTap, child: Column(children: [CircleAvatar(radius: 30, backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color, size: 30)), const SizedBox(height: 8), Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500))]));
-  }
-
-  // Bus Card & Distance Calculation Logic
-  Widget _buildBusCard(BuildContext context, String busId, Map<String, dynamic> data) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(5)),
-                    child: Text(data['busNo'] ?? "Unknown", style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(width: 10),
-                  // --- NEW: Map Icon for Distance/Time ---
-                  IconButton(
-                    icon: const Icon(Icons.map, color: Colors.green),
-                    onPressed: () => _showArrivalEstimate(context, data),
-                  ),
-                ],
-              ),
-              Text("Rs. ${data['price'] ?? 0}", style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 16)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(data['name'] ?? "Bus Name", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Text(data['routeFrom'] ?? "", style: const TextStyle(fontWeight: FontWeight.w500)),
-              const Spacer(),
-              const Icon(Icons.arrow_forward, size: 16, color: Colors.grey),
-              const Spacer(),
-              Text(data['routeTo'] ?? "", style: const TextStyle(fontWeight: FontWeight.w500)),
-            ],
-          ),
-          const SizedBox(height: 15),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                // Select Seat එකට Bus ID එක සහ Booked Seats යවනවා
-                List<String> bookedSeats = List<String>.from(data['bookedSeats'] ?? []);
-                Navigator.push(
-                  context, 
-                  MaterialPageRoute(builder: (context) => SelectSeatScreen(
-                    busId: busId,
-                    busName: data['name'] ?? "Bus",
-                    route: "${data['routeFrom']} - ${data['routeTo']}",
-                    price: data['price'] ?? "0",
-                    bookedSeats: bookedSeats
-                  ))
-                );
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-              child: const Text("Select Seats", style: TextStyle(color: Colors.white)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- Distance & Time Calculation Function ---
+  // දුර සහ පැමිණීමට ගතවන කාලය ගණනය කරන Function එක
   Future<void> _showArrivalEstimate(BuildContext context, Map<String, dynamic> busData) async {
-    // 1. බස් එකේ Location එක ගන්නවා
     double busLat = (busData['latitude'] ?? 0.0).toDouble();
     double busLng = (busData['longitude'] ?? 0.0).toDouble();
 
@@ -213,46 +28,286 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // 2. මගේ Location එක ගන්නවා
     try {
       Position userPosition = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-
-      // 3. දුර මනිනවා (Meters -> Kilometers)
       double distanceInMeters = Geolocator.distanceBetween(userPosition.latitude, userPosition.longitude, busLat, busLng);
       double distanceInKm = distanceInMeters / 1000;
-
-      // 4. වෙලාව මනිනවා (Average Speed 40km/h කියලා හිතමු)
-      // Time = Distance / Speed
       double timeInHours = distanceInKm / 40.0; 
       int timeInMinutes = (timeInHours * 60).round();
 
-      // 5. Dialog එක පෙන්නනවා
       if (mounted) {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text("Arrival Estimate"),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(children: [Icon(Icons.location_on, color: Colors.red), SizedBox(width: 10), Text("Live Status")]),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.directions_bus, size: 50, color: Colors.blue),
+                _buildInfoRow(Icons.directions_bus, "Bus is", "${distanceInKm.toStringAsFixed(1)} km away"),
+                const SizedBox(height: 15),
+                _buildInfoRow(Icons.timer, "Arriving in", "$timeInMinutes mins"),
                 const SizedBox(height: 10),
-                Text("Distance: ${distanceInKm.toStringAsFixed(2)} km", style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 5),
-                Text("Est. Time: $timeInMinutes mins", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
-                const SizedBox(height: 10),
-                const Text("(Assuming avg speed 40km/h)", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const Text("(Estimated based on traffic)", style: TextStyle(fontSize: 12, color: Colors.grey)),
               ],
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))
-            ],
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
           ),
         );
       }
-
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error getting location: $e")));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Enable GPS: $e")));
     }
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: Colors.blue[800], size: 20)),
+        const SizedBox(width: 15),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)), Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))])
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: Stack(
+        children: [
+          // 1. BLUE BACKGROUND
+          Container(
+            height: 300, 
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.blue[900]!, Colors.blue[700]!], 
+              ),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(40),
+                bottomRight: Radius.circular(40),
+              ),
+            ),
+          ),
+
+          // 2. SCROLLABLE CONTENT
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10), 
+                  
+                  // 🔥 HEADER ROW
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.directions_bus_filled_rounded, color: Colors.white, size: 40),
+                          const SizedBox(width: 10),
+                          
+                          // 🔥 SOLID WHITE TEXT (ShaderMask ඉවත් කරන ලදී)
+                          const Text(
+                            "RideWave", 
+                            style: TextStyle(
+                              color: Colors.white, // සුදු පැහැය ලබා දී ඇත
+                              fontWeight: FontWeight.w900, 
+                              fontSize: 36, 
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      CircleAvatar(
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        child: const Icon(Icons.person, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 15),
+                  const Text("Where are you going?", style: TextStyle(color: Colors.white70, fontSize: 16)),
+                  const SizedBox(height: 25),
+
+                  // 1. LIVE SEARCH BOX
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        TextField(
+                          onChanged: (value) => setState(() => _searchFrom = value.toLowerCase()),
+                          decoration: const InputDecoration(
+                            icon: Icon(Icons.my_location, color: Colors.blue),
+                            hintText: "From (Start Location)",
+                            hintStyle: TextStyle(color: Colors.grey),
+                            border: InputBorder.none, contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                        const Divider(height: 30, thickness: 1), 
+                        TextField(
+                          onChanged: (value) => setState(() => _searchTo = value.toLowerCase()),
+                          decoration: const InputDecoration(
+                            icon: Icon(Icons.location_on, color: Colors.red),
+                            hintText: "To (Destination)",
+                            hintStyle: TextStyle(color: Colors.grey),
+                            border: InputBorder.none, contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // 2. QUICK ACTIONS
+                  Row(
+                    children: [
+                      Expanded(child: _buildQuickActionCard(context, Icons.calendar_month_rounded, "Book Seat", Colors.blue[800]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchRideScreen())))),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildQuickActionCard(context, Icons.report_problem_rounded, "Report", Colors.orange, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportIssueScreen())))),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildQuickActionCard(context, Icons.sos_rounded, "SOS", Colors.red, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const EmergencyScreen())))),
+                    ],
+                  ),
+
+                  const SizedBox(height: 30),
+                  
+                  // 3. LIVE NOW HEADER
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Live Buses", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(20)),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.circle, size: 8, color: Colors.red),
+                            SizedBox(width: 5),
+                            Text("Real-time", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+
+                  // 4. LIVE BUS LIST
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('buses')
+                        .where('status', isEqualTo: 'Live')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return Center(
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 30),
+                              Icon(Icons.directions_bus_outlined, size: 60, color: Colors.grey[300]),
+                              const SizedBox(height: 10),
+                              const Text("No live buses available", style: TextStyle(color: Colors.grey)),
+                            ],
+                          ),
+                        );
+                      }
+
+                      var buses = snapshot.data!.docs;
+
+                      var filteredBuses = buses.where((doc) {
+                        var data = doc.data() as Map<String, dynamic>;
+                        String routeFrom = (data['routeFrom'] ?? '').toString().toLowerCase();
+                        String routeTo = (data['routeTo'] ?? '').toString().toLowerCase();
+                        bool matchFrom = _searchFrom.isEmpty || routeFrom.contains(_searchFrom);
+                        bool matchTo = _searchTo.isEmpty || routeTo.contains(_searchTo);
+                        return matchFrom && matchTo;
+                      }).toList();
+
+                      if (filteredBuses.isEmpty) {
+                        return const Center(child: Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: Text("No buses found for this route.", style: TextStyle(color: Colors.grey)),
+                        ));
+                      }
+
+                      return ListView.builder(
+                        shrinkWrap: true, 
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: filteredBuses.length,
+                        itemBuilder: (context, index) {
+                          var doc = filteredBuses[index];
+                          var data = doc.data() as Map<String, dynamic>;
+                          return _buildLiveBusCard(context, doc.id, data);
+                        },
+                      );
+                    },
+                  ),
+                  
+                  const SizedBox(height: 30), 
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Widgets ---
+
+  Widget _buildQuickActionCard(BuildContext context, IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 3))]),
+        child: Column(children: [Icon(icon, color: color, size: 28), const SizedBox(height: 8), Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87))]),
+      ),
+    );
+  }
+
+  Widget _buildLiveBusCard(BuildContext context, String busId, Map<String, dynamic> data) {
+    String busNo = data['busNo'] ?? "Unknown";
+    String route = "${data['routeFrom'] ?? '?'} - ${data['routeTo'] ?? '?'}";
+    double price = double.tryParse(data['price'].toString()) ?? 0.0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))]),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        leading: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(12)), child: Icon(Icons.directions_bus, color: Colors.blue[800])),
+        title: Text(busNo, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        subtitle: Text(route, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(icon: const Icon(Icons.map_rounded, color: Colors.green), onPressed: () => _showArrivalEstimate(context, data)),
+            const SizedBox(width: 5),
+            ElevatedButton(
+              onPressed: () {
+                 String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+                 Navigator.push(context, MaterialPageRoute(builder: (context) => SelectSeatScreen(busId: busId, busName: busNo, price: price, selectedDate: todayStr)));
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[800], shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5)),
+              child: const Text("Book", style: TextStyle(color: Colors.white, fontSize: 12)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

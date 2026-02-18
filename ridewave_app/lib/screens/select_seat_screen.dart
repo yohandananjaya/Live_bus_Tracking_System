@@ -5,17 +5,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 class SelectSeatScreen extends StatefulWidget {
   final String busId;
   final String busName;
-  final String route;
-  final String price;
-  final List<String> bookedSeats;
+  final double price;
+  final String selectedDate; // "2026-02-18" වගේ String එකක්
 
   const SelectSeatScreen({
-    super.key, 
+    super.key,
     required this.busId,
     required this.busName,
-    required this.route,
     required this.price,
-    required this.bookedSeats,
+    required this.selectedDate,
   });
 
   @override
@@ -23,186 +21,129 @@ class SelectSeatScreen extends StatefulWidget {
 }
 
 class _SelectSeatScreenState extends State<SelectSeatScreen> {
-  List<String> selectedSeats = [];
-  bool _isProcessing = false; // බුක් වෙනකම් ලෝඩ් වෙන එක පෙන්නන්න
+  final List<String> _selectedSeats = [];
 
-  // --- Booking Confirm කරන Function එක ---
-  Future<void> _confirmBooking() async {
-    setState(() => _isProcessing = true);
-
+  // Booking එක Submit කරන Function එක
+  Future<void> _bookSeats() async {
     User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please login to book seats.")));
-      setState(() => _isProcessing = false);
-      return;
-    }
+    if (user == null) return;
 
     try {
-      // 1. ගාණ හදාගන්නවා
-      double unitPrice = double.tryParse(widget.price) ?? 0;
-      double totalPrice = selectedSeats.length * unitPrice;
-
-      // 2. Booking එක Database එකට Save කරනවා ('bookings' collection එකට)
+      // Booking එක Database එකට දානවා (bookingDate එකත් එක්ක)
       await FirebaseFirestore.instance.collection('bookings').add({
-        'userId': user.uid,
         'busId': widget.busId,
         'busName': widget.busName,
-        'route': widget.route,
-        'seats': selectedSeats,
-        'totalPrice': totalPrice,
-        'status': 'upcoming', // මුලින්ම Upcoming වලට වැටෙන්නේ
+        'userId': user.uid,
+        'seats': _selectedSeats,
+        'totalPrice': _selectedSeats.length * widget.price,
         'bookingDate': FieldValue.serverTimestamp(),
-        'busNo': widget.busName, // බස් නම/අංකය
+        'travelDate': widget.selectedDate, // 🔥 වැදගත්: ගමන් කරන දවස
+        'status': 'upcoming', 
       });
 
-      // 3. බස් එකේ Booked Seats ලිස්ට් එක Update කරනවා (අනිත් අයට ආයේ මේවා බුක් කරන්න බැරි වෙන්න)
-      await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({
-        'bookedSeats': FieldValue.arrayUnion(selectedSeats),
-      });
+      // සාමාන්‍යයෙන් බස් එකේ Document එකේ bookedSeats අප්ඩේට් කරන්න එපා.
+      // මොකද එක එක දවසට සීට් වෙනස් නේ. ඒ නිසා Booking Collection එකෙන් විතරක් බලමු.
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Booking Successful!")));
-        Navigator.pop(context); // Home එකට යනවා
+        Navigator.popUntil(context, (route) => route.isFirst);
       }
-
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-    } finally {
-      if (mounted) setState(() => _isProcessing = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text("Select Seats", style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
+      appBar: AppBar(title: Text("Select Seats (${widget.selectedDate})"), backgroundColor: Colors.blue[800]),
       body: Column(
         children: [
-          // Header
+          // 1. Seat Grid (Stream Builder එකෙන් එදා දවසට අදාළ බුකින් විතරක් ගන්නවා)
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('bookings')
+                  .where('busId', isEqualTo: widget.busId)
+                  .where('travelDate', isEqualTo: widget.selectedDate) // 🔥 මේ දවසට විතරක් ෆිල්ටර් කරනවා
+                  .where('status', whereIn: ['confirmed', 'upcoming', 'pending']) // Cancelled/Completed ඇරෙන්න
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+                // දැනටමත් බුක් වෙලා තියෙන සීට් ටික ලිස්ට් එකකට ගන්නවා
+                List<String> alreadyBooked = [];
+                for (var doc in snapshot.data!.docs) {
+                  List seats = doc['seats'] ?? [];
+                  for (var seat in seats) {
+                    alreadyBooked.add(seat.toString());
+                  }
+                }
+
+                return GridView.builder(
+                  padding: const EdgeInsets.all(20),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, crossAxisSpacing: 10, mainAxisSpacing: 10),
+                  itemCount: 32, // සීට් ගාණ
+                  itemBuilder: (context, index) {
+                    // මැද ඉඩ තියන්න (Aisle)
+                    if (index % 4 == 2 && index < 28) return const SizedBox();
+
+                    String seatName = "${String.fromCharCode(65 + (index / 4).floor())}${(index % 4) + 1}";
+                    
+                    bool isTaken = alreadyBooked.contains(seatName);
+                    bool isSelected = _selectedSeats.contains(seatName);
+
+                    return GestureDetector(
+                      onTap: isTaken ? null : () {
+                        setState(() {
+                          if (isSelected) {
+                            _selectedSeats.remove(seatName);
+                          } else {
+                            _selectedSeats.add(seatName);
+                          }
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isTaken 
+                              ? Colors.red[300] // බුක් වෙලා නම් රතු
+                              : isSelected 
+                                  ? Colors.green // අපි තෝරගත්තා නම් කොළ
+                                  : Colors.grey[200], // හිස් නම් අළු
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: isSelected ? Colors.green : Colors.grey),
+                        ),
+                        child: Center(
+                          child: isTaken 
+                            ? const Icon(Icons.close, color: Colors.white) 
+                            : Text(seatName, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.black)),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+
+          // Bottom Bar
           Container(
-            margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(15)),
+            padding: const EdgeInsets.all(20),
+            color: Colors.white,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.busName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text(widget.route, style: const TextStyle(color: Colors.grey)),
-                  ],
-                ),
-                Text("Rs. ${widget.price}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-              ],
-            ),
-          ),
-
-          // Legend
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildLegendItem(Colors.blue, "Selected"),
-              const SizedBox(width: 20),
-              _buildLegendItem(Colors.grey, "Booked"),
-              const SizedBox(width: 20),
-              _buildLegendItem(Colors.white, "Available", hasBorder: true),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // Driver
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 40),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(5)),
-            child: const Center(child: Text("Driver", style: TextStyle(color: Colors.grey))),
-          ),
-          
-          const SizedBox(height: 20),
-
-          // Seats Grid
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30.0),
-              child: GridView.builder(
-                itemCount: 32,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4, mainAxisSpacing: 10, crossAxisSpacing: 20, childAspectRatio: 1.2,
-                ),
-                itemBuilder: (context, index) {
-                  if (index % 4 == 2 && index < 28) return const SizedBox(); // Aisle
-
-                  String seatNo = "${String.fromCharCode(65 + (index / 4).floor())}${(index % 4) + 1}";
-                  bool isBooked = widget.bookedSeats.contains(seatNo);
-                  bool isSelected = selectedSeats.contains(seatNo);
-
-                  return GestureDetector(
-                    onTap: () {
-                      if (isBooked) return;
-                      setState(() {
-                        if (isSelected) {
-                          selectedSeats.remove(seatNo);
-                        } else {
-                          selectedSeats.add(seatNo);
-                        }
-                      });
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isBooked ? Colors.grey[300] : (isSelected ? Colors.blue : Colors.white),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: isBooked ? Colors.transparent : Colors.grey[300]!),
-                      ),
-                      child: Center(child: Text(seatNo, style: TextStyle(color: isSelected ? Colors.white : (isBooked ? Colors.grey : Colors.black)))),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-
-          // Confirm Button
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.grey, width: 0.2))),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text("Selected: ${selectedSeats.join(', ')}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text("Total: Rs. ${selectedSeats.length * (double.tryParse(widget.price) ?? 0)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 18)),
-                  ],
-                ),
-                const SizedBox(height: 15),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: (selectedSeats.isEmpty || _isProcessing) ? null : _confirmBooking,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                    child: _isProcessing 
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Confirm Booking", style: TextStyle(color: Colors.white, fontSize: 18)),
-                  ),
-                ),
+                Text("Total: Rs. ${_selectedSeats.length * widget.price}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ElevatedButton(
+                  onPressed: _selectedSeats.isEmpty ? null : _bookSeats,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[800], padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12)),
+                  child: const Text("Confirm Booking", style: TextStyle(color: Colors.white, fontSize: 16)),
+                )
               ],
             ),
           )
         ],
       ),
     );
-  }
-
-  Widget _buildLegendItem(Color color, String label, {bool hasBorder = false}) {
-    return Row(children: [Container(width: 20, height: 20, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(5), border: hasBorder ? Border.all(color: Colors.grey[300]!) : null)), const SizedBox(width: 5), Text(label, style: const TextStyle(fontSize: 12))]);
   }
 }
