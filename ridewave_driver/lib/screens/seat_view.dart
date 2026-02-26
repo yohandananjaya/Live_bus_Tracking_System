@@ -1,128 +1,115 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
-class SeatView extends StatelessWidget {
+class SeatView extends StatefulWidget {
   final String busId;
   const SeatView({super.key, required this.busId});
 
-  // Manual Reset Function
-  void _resetSeats(BuildContext context) {
-    showDialog(
+  @override
+  State<SeatView> createState() => _SeatViewState();
+}
+
+class _SeatViewState extends State<SeatView> {
+  DateTime _selectedDate = DateTime.now(); // සීට් බලන්න ඕන දිනය
+
+  Future<void> _pickDate() async {
+    DateTime? picked = await showDatePicker(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Clear All Seats?"),
-        content: const Text("This will make all seats 'Available'. Are you sure?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () async {
-              await FirebaseFirestore.instance.collection('buses').doc(busId).update({'bookedSeats': []});
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Seats Cleared!")));
-            }, 
-            child: const Text("Clear All", style: TextStyle(color: Colors.white))
-          ),
-        ],
-      ),
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
     );
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   @override
   Widget build(BuildContext context) {
+    String dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text("Seat Layout"), 
-        backgroundColor: Colors.blue[800], 
+        title: const Text("Seat Layout"),
+        backgroundColor: Colors.blue[800],
         foregroundColor: Colors.white,
-        centerTitle: true,
+        actions: [
+          TextButton.icon(
+            onPressed: _pickDate,
+            icon: const Icon(Icons.calendar_today, color: Colors.white, size: 16),
+            label: Text(dateStr, style: const TextStyle(color: Colors.white)),
+          )
+        ],
       ),
-      // 🔥 අලුත් Button එක: Clear Seats Manually
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _resetSeats(context),
-        label: const Text("Reset Seats"),
-        icon: const Icon(Icons.refresh),
-        backgroundColor: Colors.redAccent,
-      ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(15),
-            color: Colors.white,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildLegendItem(Colors.white, "Available", isBorder: true),
-                _buildLegendItem(Colors.redAccent, "Booked"),
-              ],
-            ),
-          ),
-          
-          Expanded(
-            child: StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance.collection('buses').doc(busId).snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                
-                List booked = snapshot.data!['bookedSeats'] ?? [];
-                
-                return GridView.builder(
-                  padding: const EdgeInsets.all(30),
+      body: StreamBuilder<QuerySnapshot>(
+        // 🔥 බස් එකේ Document එකෙන් නෙවෙයි, Booking Collection එකෙන් දිනයට අදාළව ගන්නවා
+        stream: FirebaseFirestore.instance
+            .collection('bookings')
+            .where('busId', isEqualTo: widget.busId)
+            .where('travelDate', isEqualTo: dateStr) // දිනය අනුව ෆිල්ටර්
+            .where('status', whereIn: ['confirmed', 'upcoming', 'pending'])
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+          // බුක් වෙලා තියෙන සීට් ටික ලිස්ට් එකකට ගන්නවා
+          List<String> bookedSeats = [];
+          for (var doc in snapshot.data!.docs) {
+            List s = doc['seats'] ?? [];
+            for (var seat in s) {
+              bookedSeats.add(seat.toString());
+            }
+          }
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(15.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _legend(Colors.white, "Free", true),
+                    const SizedBox(width: 20),
+                    _legend(Colors.red, "Booked (${bookedSeats.length})", false),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.all(20),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4, 
-                    crossAxisSpacing: 15, 
-                    mainAxisSpacing: 15,
-                    childAspectRatio: 1.0,
-                  ),
-                  itemCount: 32,
+                    crossAxisCount: 4, crossAxisSpacing: 10, mainAxisSpacing: 10),
+                  itemCount: 32, // සීට් ගාණ
                   itemBuilder: (context, index) {
-                    if (index % 4 == 2 && index < 28) return const SizedBox();
+                    if (index % 4 == 2 && index < 28) return const SizedBox(); // Aisle
                     
                     String seatName = "${String.fromCharCode(65 + (index / 4).floor())}${(index % 4) + 1}";
-                    bool isBooked = booked.contains(seatName);
+                    bool isBooked = bookedSeats.contains(seatName);
 
                     return Container(
                       decoration: BoxDecoration(
-                        color: isBooked ? Colors.redAccent : Colors.white,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(15), bottom: Radius.circular(5)),
-                        border: isBooked ? null : Border.all(color: Colors.blue[200]!, width: 2),
-                        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+                        color: isBooked ? Colors.red : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey),
                       ),
-                      child: Center(
-                        child: Text(
-                          seatName,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isBooked ? Colors.white : Colors.blue[800],
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
+                      alignment: Alignment.center,
+                      child: Text(seatName, style: TextStyle(color: isBooked ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
                     );
                   },
-                );
-              },
-            ),
-          ),
-        ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildLegendItem(Color color, String label, {bool isBorder = false}) {
+  Widget _legend(Color color, String text, bool border) {
     return Row(
       children: [
-        Container(
-          width: 20, height: 20,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(4),
-            border: isBorder ? Border.all(color: Colors.blue[200]!, width: 2) : null,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+        Container(width: 20, height: 20, decoration: BoxDecoration(color: color, border: border ? Border.all(color: Colors.grey) : null, borderRadius: BorderRadius.circular(4))),
+        const SizedBox(width: 5),
+        Text(text)
       ],
     );
   }

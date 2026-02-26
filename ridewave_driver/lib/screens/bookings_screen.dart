@@ -1,101 +1,71 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // pubspec.yaml එකට intl දාන්න
 
-class BookingsScreen extends StatelessWidget {
+class BookingsScreen extends StatefulWidget {
   final String busId;
   const BookingsScreen({super.key, required this.busId});
 
-  // තනි Booking එකක් Confirm කරන Function එක (පරණ එකමයි)
-  Future<void> _confirm(BuildContext context, String id, double price) async {
-    try {
-      await FirebaseFirestore.instance.collection('bookings').doc(id).update({'status': 'confirmed'});
-      await FirebaseFirestore.instance.collection('buses').doc(busId).update({'totalRevenue': FieldValue.increment(price)});
-      if(context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Booking Confirmed!")));
-    } catch (e) {
-      if(context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+  @override
+  State<BookingsScreen> createState() => _BookingsScreenState();
+}
+
+class _BookingsScreenState extends State<BookingsScreen> {
+  DateTime _selectedDate = DateTime.now(); // Default: අද දවස
+
+  // දිනය තෝරාගැනීම
+  Future<void> _pickDate() async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
     }
   }
 
-  // 🔥 NEW: මුළු ලිස්ට් එකම සුද්ද කරන Function එක
-  Future<void> _clearJourney(BuildContext context) async {
-    bool? confirm = await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Finish & Clear Journey?"),
-        content: const Text("This will mark ALL current bookings as 'Completed' and clear all booked seats. Use this only after the trip ends."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Clear All", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        // Batch Write (ඔක්කොම එකපාර වෙනස් කරන්න)
-        WriteBatch batch = FirebaseFirestore.instance.batch();
-
-        // 1. මේ බස් එකේ Active Bookings ටික ගන්න (Completed නැති ඒවා)
-        var bookingsSnapshot = await FirebaseFirestore.instance
-            .collection('bookings')
-            .where('busId', isEqualTo: busId)
-            .where('status', whereIn: ['pending', 'upcoming', 'confirmed']) // මේ Status තියෙන ඒවා විතරයි
-            .get();
-
-        // ඒවා 'completed' කරන්න ලිස්ට් එකට දානවා
-        for (var doc in bookingsSnapshot.docs) {
-          batch.update(doc.reference, {'status': 'completed'});
-        }
-
-        // 2. බස් එකේ Seats ටික හිස් කරන්න ලිස්ට් එකට දානවා
-        var busRef = FirebaseFirestore.instance.collection('buses').doc(busId);
-        batch.update(busRef, {'bookedSeats': []});
-
-        // 3. ඔක්කොම එකපාර ක්‍රියාත්මක කරන්න
-        await batch.commit();
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Journey Cleared Successfully!")));
-        }
-      } catch (e) {
-        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error clearing: $e")));
-      }
-    }
+  // Booking එක Confirm කිරීම
+  Future<void> _confirm(String id, double price) async {
+    await FirebaseFirestore.instance.collection('bookings').doc(id).update({'status': 'confirmed'});
+    // Note: Long distance වලදී Revenue එක Bus එකට කෙලින්ම එකතු කරනවද, 
+    // නැත්නම් Trip එක අවසානයේ එකතු කරනවද කියලා තීරණය කරන්න ඕනේ. 
+    // දැනට Confirm විතරක් කරමු.
+    if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Confirmed!")));
   }
 
   @override
   Widget build(BuildContext context) {
+    String formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text("Manage Bookings", style: TextStyle(fontWeight: FontWeight.bold)), 
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Bookings", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(formattedDate, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+          ],
+        ),
         backgroundColor: Colors.blue[800],
         foregroundColor: Colors.white,
-        centerTitle: true,
-        elevation: 0,
-        // 🔥 අලුත් Clear Button එක
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_sweep, color: Colors.white),
-            tooltip: "Clear Journey",
-            onPressed: () => _clearJourney(context),
+            icon: const Icon(Icons.calendar_today),
+            onPressed: _pickDate, // දින දර්ශනය
           ),
-          const SizedBox(width: 10),
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // 🔥 Filter: Completed නැති ඒවා විතරක් පෙන්නන්න (Pending/Upcoming/Confirmed)
         stream: FirebaseFirestore.instance
             .collection('bookings')
-            .where('busId', isEqualTo: busId)
+            .where('busId', isEqualTo: widget.busId)
+            .where('travelDate', isEqualTo: formattedDate) // 🔥 දිනයට අදාළ ඒවා විතරයි
             .where('status', whereIn: ['pending', 'upcoming', 'confirmed']) 
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError) return Center(child: Text("Error loading bookings", style: TextStyle(color: Colors.red[400])));
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           
           if (snapshot.data!.docs.isEmpty) {
@@ -103,10 +73,9 @@ class BookingsScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle_outline, size: 80, color: Colors.green[200]),
-                  const SizedBox(height: 15),
-                  Text("All Cleared!", style: TextStyle(color: Colors.grey[500], fontSize: 18)),
-                  Text("Ready for next trip.", style: TextStyle(color: Colors.grey[400], fontSize: 14)),
+                  Icon(Icons.calendar_today_outlined, size: 60, color: Colors.grey[300]),
+                  const SizedBox(height: 10),
+                  Text("No bookings for $formattedDate", style: TextStyle(color: Colors.grey[500])),
                 ],
               ),
             );
@@ -119,79 +88,28 @@ class BookingsScreen extends StatelessWidget {
               var doc = snapshot.data!.docs[index];
               var data = doc.data() as Map<String, dynamic>;
               bool confirmed = data['status'] == 'confirmed';
-              List seats = data['seats'] is List ? data['seats'] : [];
-              // Price එක සමහර විට String හෝ Double වෙන්න පුළුවන් නිසා ආරක්ෂිතව ගන්නවා
+              List seats = data['seats'] ?? [];
               double price = (data['totalPrice'] is String) 
                   ? double.tryParse(data['totalPrice']) ?? 0.0 
                   : (data['totalPrice'] as num).toDouble();
 
               return Card(
                 elevation: 2,
-                margin: const EdgeInsets.only(bottom: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                child: Padding(
-                  padding: const EdgeInsets.all(15.0),
-                  child: Row(
-                    children: [
-                      // Seat Icon Box
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: confirmed ? Colors.green[50] : Colors.orange[50], // Pending නම් Orange
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(Icons.event_seat, color: confirmed ? Colors.green : Colors.orange, size: 28),
-                      ),
-                      const SizedBox(width: 15),
-                      // Details
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Seats: ${seats.join(', ')}",
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey[800]),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              "Price: Rs. $price",
-                              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                            ),
-                            // Status Text එකත් පෙන්නමු
-                            Text(
-                              confirmed ? "Paid & Confirmed" : "Payment Pending",
-                              style: TextStyle(
-                                color: confirmed ? Colors.green : Colors.redAccent, 
-                                fontSize: 12, 
-                                fontWeight: FontWeight.bold
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Action Button
-                      confirmed 
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(color: Colors.green[100], borderRadius: BorderRadius.circular(20)),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.check, size: 16, color: Colors.green),
-                              SizedBox(width: 5),
-                              Text("Paid", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        )
-                      : ElevatedButton(
-                          onPressed: () => _confirm(context, doc.id, price),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[800],
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          child: const Text("Confirm", style: TextStyle(color: Colors.white)),
-                        ),
-                    ],
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: confirmed ? Colors.green[100] : Colors.orange[100],
+                    child: Icon(Icons.person, color: confirmed ? Colors.green : Colors.orange),
                   ),
+                  title: Text("Seats: ${seats.join(', ')}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text("Rs. $price  •  ${data['status'].toString().toUpperCase()}"),
+                  trailing: confirmed 
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[800], padding: const EdgeInsets.symmetric(horizontal: 10)),
+                        onPressed: () => _confirm(doc.id, price),
+                        child: const Text("Confirm", style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ),
                 ),
               );
             },
