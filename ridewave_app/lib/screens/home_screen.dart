@@ -6,6 +6,7 @@ import 'search_ride_screen.dart';
 import 'select_seat_screen.dart'; 
 import 'emergency_screen.dart';
 import 'report_issue_screen.dart';
+import 'profile_screen.dart'; // 🔥 Profile Screen එක මෙතනට Import කරලා තියෙන්නේ
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -110,12 +111,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           const Icon(Icons.directions_bus_filled_rounded, color: Colors.white, size: 40),
                           const SizedBox(width: 10),
-                          
-                          // 🔥 SOLID WHITE TEXT (ShaderMask ඉවත් කරන ලදී)
                           const Text(
                             "RideWave", 
                             style: TextStyle(
-                              color: Colors.white, // සුදු පැහැය ලබා දී ඇත
+                              color: Colors.white, 
                               fontWeight: FontWeight.w900, 
                               fontSize: 36, 
                               letterSpacing: 1.2,
@@ -123,9 +122,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      CircleAvatar(
-                        backgroundColor: Colors.white.withOpacity(0.2),
-                        child: const Icon(Icons.person, color: Colors.white),
+                      // 🔥 RIGHT: Profile Icon (Clickable)
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                          );
+                        },
+                        child: CircleAvatar(
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          child: const Icon(Icons.person, color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
@@ -147,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       children: [
                         TextField(
-                          onChanged: (value) => setState(() => _searchFrom = value.toLowerCase()),
+                          onChanged: (value) => setState(() => _searchFrom = value.toLowerCase().trim()),
                           decoration: const InputDecoration(
                             icon: Icon(Icons.my_location, color: Colors.blue),
                             hintText: "From (Start Location)",
@@ -157,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const Divider(height: 30, thickness: 1), 
                         TextField(
-                          onChanged: (value) => setState(() => _searchTo = value.toLowerCase()),
+                          onChanged: (value) => setState(() => _searchTo = value.toLowerCase().trim()),
                           decoration: const InputDecoration(
                             icon: Icon(Icons.location_on, color: Colors.red),
                             hintText: "To (Destination)",
@@ -204,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 15),
 
-                  // 4. LIVE BUS LIST
+                  // 4. LIVE BUS LIST (With Updated Filtering Logic & Stops array)
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('buses')
@@ -227,12 +235,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       var buses = snapshot.data!.docs;
 
+                      // Filtering logic
                       var filteredBuses = buses.where((doc) {
                         var data = doc.data() as Map<String, dynamic>;
+                        
+                        // 1. Data Lowercase කිරීම
                         String routeFrom = (data['routeFrom'] ?? '').toString().toLowerCase();
                         String routeTo = (data['routeTo'] ?? '').toString().toLowerCase();
-                        bool matchFrom = _searchFrom.isEmpty || routeFrom.contains(_searchFrom);
-                        bool matchTo = _searchTo.isEmpty || routeTo.contains(_searchTo);
+                        
+                        // 2. අතරමැදි නැවතුම් (Stops)
+                        List<dynamic> stopsList = data['stops'] ?? [];
+                        List<String> stops = stopsList.map((s) => s.toString().toLowerCase()).toList();
+
+                        // 3. Search Logic
+                        bool matchFrom = _searchFrom.isEmpty || 
+                                         routeFrom.contains(_searchFrom) || 
+                                         stops.any((stop) => stop.contains(_searchFrom));
+
+                        bool matchTo = _searchTo.isEmpty || 
+                                       routeTo.contains(_searchTo) || 
+                                       stops.any((stop) => stop.contains(_searchTo));
+
                         return matchFrom && matchTo;
                       }).toList();
 
