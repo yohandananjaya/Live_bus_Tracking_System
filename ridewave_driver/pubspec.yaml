@@ -25,6 +25,7 @@ dependencies:
   
   # Icons
   cupertino_icons: ^1.0.2
+  geocoding: ^4.0.0
 
 dev_dependencies:
   flutter_test:

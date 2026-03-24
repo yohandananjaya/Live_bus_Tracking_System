@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import '../services/location_service.dart';
 import 'login_screen.dart';
 import 'seat_view.dart';
 import 'bookings_screen.dart';
 import 'report_screen.dart';
 import 'driver_map_screen.dart';
-import 'trip_history_screen.dart'; // Import New Screen
-import 'timetable_screen.dart';   // Import New Screen
+import 'trip_history_screen.dart';
+import 'timetable_screen.dart';
 
 class Dashboard extends StatefulWidget {
   final String busId;
@@ -22,11 +24,115 @@ class _DashboardState extends State<Dashboard> {
   final LocationService _locationService = LocationService();
   bool _isLoading = false;
 
- 
-// --- 🔥 Modified _toggleTrip Function ---
+  // --- දුර අනුව මිල ගණනය කර ට්‍රිප් එක පටන් ගන්නා Function එක ---
+  Future<void> _startTripWithRouteSetup() async {
+    TextEditingController fromCtrl = TextEditingController();
+    TextEditingController toCtrl = TextEditingController();
+    TextEditingController stopsCtrl = TextEditingController();
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Setup Today's Route"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: fromCtrl, decoration: const InputDecoration(labelText: "Start Location (e.g. Wakwella)")),
+              const SizedBox(height: 10),
+              TextField(controller: toCtrl, decoration: const InputDecoration(labelText: "Destination (e.g. Galle)")),
+              const SizedBox(height: 10),
+              TextField(
+                controller: stopsCtrl, 
+                decoration: const InputDecoration(labelText: "Stops (comma separated)", hintText: "Richmond Hill, Karapitiya"),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 10),
+              const Text("Ticket price will be auto-calculated.", style: TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () async {
+              if (fromCtrl.text.isEmpty || toCtrl.text.isEmpty) return;
+              Navigator.pop(ctx);
+              await _calculatePriceAndStartTrip(fromCtrl.text, toCtrl.text, stopsCtrl.text);
+            },
+            child: const Text("Calculate & Start", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- දුර සහ මිල ගණනය කිරීමේ ලොජික් එක ---
+  Future<void> _calculatePriceAndStartTrip(String from, String to, String stopsString) async {
+    setState(() => _isLoading = true);
+    
+    try {
+      // 1. නගර වල ඛණ්ඩාංක හොයාගැනීම ('Sri Lanka' එකතු කරලා)
+      List<Location> fromLocations = await locationFromAddress("$from, Sri Lanka");
+      List<Location> toLocations = await locationFromAddress("$to, Sri Lanka");
+
+      if (fromLocations.isEmpty || toLocations.isEmpty) {
+        throw Exception("Could not find locations. Please check city names.");
+      }
+
+      // 2. දුර ගණනය කිරීම
+      double distanceInMeters = Geolocator.distanceBetween(
+        fromLocations.first.latitude, fromLocations.first.longitude,
+        toLocations.first.latitude, toLocations.first.longitude,
+      );
+      
+      double distanceInKm = distanceInMeters / 1000;
+
+      // 3. 🔥 Base Price එකත් එක්ක අලුත් මිල ගණනය කිරීම 🔥
+      double basePrice = 27.00; // ලංකාවේ සාමාන්‍ය අවම බස් ගාස්තුව
+      double ratePerKm = 4.66;  // ඉතිරි කිලෝමීටරයක් සඳහා අය කරන මුදල
+      
+      double calculatedPrice = basePrice + (distanceInKm * ratePerKm);
+      
+      // ගාණ කෙලින්ම පූර්ණ සංඛ්‍යාවකට (Whole number) රවුම් කිරීම 
+      int finalPrice = calculatedPrice.round();
+
+      // 4. Stops ටික List එකක් කිරීම
+      List<String> stopsList = stopsString.split(',').map((s) => s.trim().toLowerCase()).toList();
+      stopsList.removeWhere((element) => element.isEmpty);
+
+      // 5. GPS On කර ට්‍රිප් එක පටන් ගැනීම
+      bool started = await _locationService.startTrip(widget.busId);
+      if (started) {
+        // 6. Firebase එකට අලුත් දත්ත යැවීම
+        await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({
+          'status': 'Live',
+          'routeFrom': from,
+          'routeTo': to,
+          'stops': stopsList,
+          'price': finalPrice.toString(), 
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Trip Started! Ticket Price: Rs. $finalPrice"), backgroundColor: Colors.green));
+        }
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("GPS Permission Denied")));
+      }
+
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error calculating route: $e"), backgroundColor: Colors.red));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // --- ට්‍රිප් එක පටන් ගැනීම සහ අවසන් කිරීම (Toggle) ---
   void _toggleTrip(bool isLive, double currentRevenue) async {
     if (isLive) {
-      // 1. END JOURNEY
+      // END JOURNEY
       setState(() => _isLoading = true);
       await _locationService.stopTrip();
       
@@ -58,23 +164,23 @@ class _DashboardState extends State<Dashboard> {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
                 onPressed: () async {
-                  Navigator.pop(ctx); // Close Dialog first
+                  Navigator.pop(ctx); 
                   
                   // 1. Seats Clear කරනවා
                   await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({'bookedSeats': []});
 
-                  // 2. 🔥 NEW: මේ බස් එකේ Active Bookings ඔක්කොම 'completed' කරනවා
+                  // 2. Active Bookings ඔක්කොම 'completed' කරනවා
                   var batch = FirebaseFirestore.instance.batch();
                   var snapshots = await FirebaseFirestore.instance
                       .collection('bookings')
                       .where('busId', isEqualTo: widget.busId)
-                      .where('status', isEqualTo: 'confirmed') // Confirmed ඒවා විතරක්
+                      .where('status', isEqualTo: 'confirmed') 
                       .get();
 
                   for (var doc in snapshots.docs) {
                     batch.update(doc.reference, {'status': 'completed'});
                   }
-                  await batch.commit(); // ඔක්කොම එකපාර Update වෙනවා
+                  await batch.commit(); 
 
                   if(mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Journey Finished & Bookings Completed!")));
@@ -88,20 +194,12 @@ class _DashboardState extends State<Dashboard> {
       }
 
     } else {
-      // 2. START JOURNEY
-      setState(() => _isLoading = true);
-      bool started = await _locationService.startTrip(widget.busId);
-      if (started) {
-        await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({'status': 'Live'});
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("GPS Permission Denied")));
-      }
-      setState(() => _isLoading = false);
+      // START JOURNEY (අලුත් ක්‍රමය)
+      _startTripWithRouteSetup();
     }
   }
 
-  // --- Other Logic (Logout, Price Edit) - No Changes needed ---
-  // (කලින් කෝඩ් එකේ තිබුණ _handleLogout සහ _editPrice එහෙම්මම තියන්න)
+  // --- Logout Logic ---
   Future<void> _handleLogout(bool isLive) async {
     bool? confirm = await showDialog(
       context: context,
@@ -123,24 +221,6 @@ class _DashboardState extends State<Dashboard> {
       await prefs.clear();
       if (mounted) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false);
     }
-  }
-
-  void _editPrice(BuildContext context, String currentPrice) {
-    TextEditingController ctrl = TextEditingController(text: currentPrice);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Update Ticket Price"),
-        content: TextField(controller: ctrl, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: "Rs. ", border: OutlineInputBorder())),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[800]), onPressed: () async {
-            await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({'price': ctrl.text.trim()});
-            Navigator.pop(context);
-          }, child: const Text("Update", style: TextStyle(color: Colors.white)))
-        ],
-      ),
-    );
   }
 
   @override
@@ -187,10 +267,15 @@ class _DashboardState extends State<Dashboard> {
           bool isLive = data['status'] == 'Live';
           String price = data['price'] ?? "0";
           double revenue = (data['totalRevenue'] ?? 0).toDouble();
+          String busNo = data['busNo'] ?? "Unknown Bus";
+          
+          // Route Display
+          String routeFrom = data['routeFrom'] != null && data['routeFrom'].toString().isNotEmpty ? data['routeFrom'] : "Not Set";
+          String routeTo = data['routeTo'] != null && data['routeTo'].toString().isNotEmpty ? data['routeTo'] : "Not Set";
 
           return Column(
             children: [
-              // 1. Top Bus Status Card (Same as before)
+              // 1. Top Bus Status Card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
@@ -207,19 +292,21 @@ class _DashboardState extends State<Dashboard> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(data['busNo'] ?? "Unknown Bus", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-                              const SizedBox(height: 5),
-                              Row(
-                                children: [
-                                  const Icon(Icons.route, size: 16, color: Colors.white70),
-                                  const SizedBox(width: 5),
-                                  Text("${data['routeFrom']} - ${data['routeTo']}", style: const TextStyle(fontSize: 16, color: Colors.white70)),
-                                ],
-                              ),
-                            ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(busNo, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                                const SizedBox(height: 5),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.route, size: 16, color: Colors.white70),
+                                    const SizedBox(width: 5),
+                                    Expanded(child: Text("$routeFrom - $routeTo", style: const TextStyle(fontSize: 16, color: Colors.white70), overflow: TextOverflow.ellipsis)),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
@@ -234,14 +321,14 @@ class _DashboardState extends State<Dashboard> {
                       children: [
                         Expanded(child: _statCard("Total Revenue", "Rs. $revenue", Icons.attach_money, Colors.white)),
                         const SizedBox(width: 15),
-                        Expanded(child: _statCard("Ticket Price", "Rs. $price", Icons.edit, Colors.white, onTap: () => _editPrice(context, price))),
+                        Expanded(child: _statCard("Ticket Price", "Rs. $price", Icons.confirmation_number, Colors.white)),
                       ],
                     ),
                   ],
                 ),
               ),
 
-              // 2. Main Actions Grid (NEW CARDS ADDED)
+              // 2. Main Actions Grid
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
@@ -249,14 +336,12 @@ class _DashboardState extends State<Dashboard> {
                     crossAxisCount: 2,
                     crossAxisSpacing: 15,
                     mainAxisSpacing: 15,
-                    childAspectRatio: 1.1, // Adjusted for more cards
+                    childAspectRatio: 1.1, 
                     children: [
                       _actionCard("Live Map", Icons.map_rounded, Colors.blue[700]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => DriverMapScreen(busId: widget.busId)))),
                       _actionCard("Bookings", Icons.confirmation_number_rounded, Colors.indigo[400]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => BookingsScreen(busId: widget.busId)))),
                       _actionCard("Seat Layout", Icons.grid_view_rounded, Colors.lightBlue[600]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => SeatView(busId: widget.busId)))),
                       _actionCard("Report Issue", Icons.warning_rounded, Colors.redAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => ReportScreen(busId: widget.busId)))),
-                      
-                      // --- NEW CARDS ---
                       _actionCard("Trip History", Icons.history_rounded, Colors.teal[600]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => TripHistoryScreen(busId: widget.busId)))),
                       _actionCard("Time Table", Icons.schedule_rounded, Colors.purple[400]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => TimeTableScreen(busId: widget.busId)))),
                     ],
@@ -272,7 +357,7 @@ class _DashboardState extends State<Dashboard> {
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : () => _toggleTrip(isLive, revenue), // Passing current revenue
+                    onPressed: _isLoading ? null : () => _toggleTrip(isLive, revenue),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isLive ? Colors.redAccent : const Color(0xFF00C853),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -298,13 +383,18 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  Widget _statCard(String title, String value, IconData icon, Color textColor, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
-        decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.3))),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: TextStyle(color: textColor.withOpacity(0.9), fontSize: 12)), if(onTap != null) Icon(Icons.edit, size: 14, color: textColor.withOpacity(0.9))]), const SizedBox(height: 5), Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor))]),
+  // UI Widgets
+  Widget _statCard(String title, String value, IconData icon, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.3))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start, 
+        children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: TextStyle(color: textColor.withOpacity(0.9), fontSize: 12))]), 
+          const SizedBox(height: 5), 
+          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor))
+        ]
       ),
     );
   }
@@ -314,7 +404,14 @@ class _DashboardState extends State<Dashboard> {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.blueGrey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))]),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle), child: Icon(icon, size: 28, color: color)), const SizedBox(height: 10), Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey[800]))]),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center, 
+          children: [
+            Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle), child: Icon(icon, size: 28, color: color)), 
+            const SizedBox(height: 10), 
+            Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey[800]))
+          ]
+        ),
       ),
     );
   }

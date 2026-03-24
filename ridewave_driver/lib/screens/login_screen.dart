@@ -12,80 +12,68 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _codeController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  
   bool _isLoading = false;
-  bool _isCodeVerified = false;
-  bool _isFirstTime = false;
-  String? _busId;
-  String? _busName;
 
-  // --- Logic එහෙම්මමයි ---
-  Future<void> _verifyCode() async {
+  Future<void> _loginWithCode() async {
+    String enteredCode = _codeController.text.trim(); // හිස්තැන් අයින් කරයි
+
+    if (enteredCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter the access code")),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
+
     try {
-      var query = await FirebaseFirestore.instance
+      // 🔥 Firebase එකේ buses collection එකෙන් accessCode එක හොයනවා
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('buses')
-          .where('driverCode', isEqualTo: _codeController.text.trim())
+          .where('accessCode', isEqualTo: enteredCode)
           .limit(1)
           .get();
 
-      if (query.docs.isNotEmpty) {
-        var data = query.docs.first.data();
-        setState(() {
-          _busId = query.docs.first.id;
-          _busName = data['name'];
-          _isFirstTime = (data['driverPassword'] == null || data['driverPassword'] == "");
-          _isCodeVerified = true;
-        });
+      if (snapshot.docs.isNotEmpty) {
+        // කේතය නිවැරදියි! බස් එකේ Document ID එක ගන්නවා
+        String busId = snapshot.docs.first.id;
+
+        // SharedPreferences වල සේව් කරනවා (ඇප් එක වැහුවත් ලොග් වෙලා ඉන්න)
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isDriverLoggedIn', true); // main.dart එකෙන් මේක බලනවා
+        await prefs.setString('driverBusId', busId);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Login Successful!", style: TextStyle(color: Colors.white)),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          // Dashboard එකට යවනවා
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => Dashboard(busId: busId)),
+          );
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Invalid Driver Code")));
+        // කේතය වැරදියි
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Invalid Access Code. Please check again."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _processLogin() async {
-    if (_passwordController.text.isEmpty) return;
-    setState(() => _isLoading = true);
-    try {
-      if (_isFirstTime) {
-         if (_passwordController.text != _confirmPasswordController.text) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Passwords do not match!")));
-          setState(() => _isLoading = false);
-          return;
-        }
-        await FirebaseFirestore.instance.collection('buses').doc(_busId).update({
-          'driverPassword': _passwordController.text.trim(),
-        });
-      } else {
-        var doc = await FirebaseFirestore.instance.collection('buses').doc(_busId).get();
-        if (doc['driverPassword'] != _passwordController.text.trim()) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Incorrect Password!")));
-          setState(() => _isLoading = false);
-          return;
-        }
-      }
-
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isDriverLoggedIn', true);
-      await prefs.setString('driverBusId', _busId!);
-
       if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => Dashboard(busId: _busId!)),
-          (route) => false,
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -121,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                "Welcome back! Please login to continue.",
+                "Enter the Access Code to continue",
                 style: TextStyle(color: Colors.grey[600], fontSize: 16),
               ),
               const SizedBox(height: 40),
@@ -132,64 +120,37 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 5))],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1), 
+                      blurRadius: 15, 
+                      offset: const Offset(0, 5)
+                    )
+                  ],
                 ),
                 child: Column(
                   children: [
-                    if (!_isCodeVerified) ...[
-                      _buildTextField(
-                        controller: _codeController,
-                        label: "Driver Code",
-                        icon: Icons.qr_code,
+                    _buildTextField(
+                      controller: _codeController,
+                      label: "Driver Access Code (e.g. RW-5RK4)",
+                      icon: Icons.qr_code_scanner, // අයිකන් එක වෙනස් කළා
+                    ),
+                    const SizedBox(height: 25),
+                    SizedBox(
+                      width: double.infinity, 
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _loginWithCode, 
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[800],
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 2,
+                        ), 
+                        child: _isLoading 
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text("Login", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
-                      const SizedBox(height: 25),
-                      SizedBox(
-                        width: double.infinity, 
-                        height: 55,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _verifyCode, 
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[800],
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 2,
-                          ), 
-                          child: const Text("Verify Code", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-
-                    if (_isCodeVerified) ...[
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(10)),
-                        child: Row(
-                          children: [
-                            Icon(Icons.check_circle, color: Colors.blue[800]),
-                            const SizedBox(width: 10),
-                            Expanded(child: Text("Bus: $_busName", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue[900]))),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      _buildTextField(controller: _passwordController, label: "Password", icon: Icons.lock, isObscure: true),
-                      if (_isFirstTime) ...[
-                        const SizedBox(height: 15),
-                        _buildTextField(controller: _confirmPasswordController, label: "Confirm Password", icon: Icons.lock_outline, isObscure: true),
-                      ],
-                      const SizedBox(height: 25),
-                      SizedBox(
-                        width: double.infinity, 
-                        height: 55,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _processLogin, 
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green[600], // Green for login action
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ), 
-                          child: Text(_isFirstTime ? "Set Password & Login" : "Login", style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ]
+                    ),
                   ],
                 ),
               ),
@@ -200,10 +161,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, bool isObscure = false}) {
+  // Custom TextField
+  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon}) {
     return TextField(
       controller: controller,
-      obscureText: isObscure,
+      textCapitalization: TextCapitalization.characters, // ගහන අකුරු Auto Capital වෙනවා
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: Colors.blue[800]),
