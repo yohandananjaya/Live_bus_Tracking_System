@@ -13,13 +13,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-    }
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
+        // 🔥 PayHere එක හොයාගන්න අලුතින් එකතු කළ පේළිය
+        maven { url = uri("https://jitpack.io") } 
     }
 }
 

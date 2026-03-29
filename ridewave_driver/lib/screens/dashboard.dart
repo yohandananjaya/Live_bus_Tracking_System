@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
+import 'package:intl/intl.dart';
 import '../services/location_service.dart';
 import 'login_screen.dart';
 import 'seat_view.dart';
@@ -24,119 +23,115 @@ class _DashboardState extends State<Dashboard> {
   final LocationService _locationService = LocationService();
   bool _isLoading = false;
 
-  // --- දුර අනුව මිල ගණනය කර ට්‍රිප් එක පටන් ගන්නා Function එක ---
-  Future<void> _startTripWithRouteSetup() async {
-    TextEditingController fromCtrl = TextEditingController();
-    TextEditingController toCtrl = TextEditingController();
-    TextEditingController stopsCtrl = TextEditingController();
+  // --- අද දවසට අදාළ ට්‍රිප් එක තෝරාගෙන පටන් ගැනීම ---
+  Future<void> _showTodaySchedulesAndStart() async {
+    String todayStr = DateFormat('EEEE').format(DateTime.now()); // e.g. Monday
 
-    await showDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Setup Today's Route"),
-        content: SingleChildScrollView(
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          height: 400,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: fromCtrl, decoration: const InputDecoration(labelText: "Start Location (e.g. Wakwella)")),
-              const SizedBox(height: 10),
-              TextField(controller: toCtrl, decoration: const InputDecoration(labelText: "Destination (e.g. Galle)")),
-              const SizedBox(height: 10),
-              TextField(
-                controller: stopsCtrl, 
-                decoration: const InputDecoration(labelText: "Stops (comma separated)", hintText: "Richmond Hill, Karapitiya"),
-                maxLines: 2,
+              Text("Select Trip for Today ($todayStr)", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 15),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('schedules')
+                      .where('busId', isEqualTo: widget.busId)
+                      .where('dayOfWeek', isEqualTo: todayStr)
+                      .orderBy('departureTime')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                    
+                    if (snapshot.data!.docs.isEmpty) {
+                      return Center(
+                        child: Text(
+                          "No trips scheduled for today.\nPlease add them in the Time Table.", 
+                          textAlign: TextAlign.center, 
+                          style: TextStyle(color: Colors.grey[600], fontSize: 16)
+                        )
+                      );
+                    }
+
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: snapshot.data!.docs.length,
+                      itemBuilder: (context, index) {
+                        var doc = snapshot.data!.docs[index];
+                        var data = doc.data() as Map<String, dynamic>;
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          child: ListTile(
+                            tileColor: Colors.blue[50],
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            leading: Icon(Icons.directions_bus, color: Colors.blue[800]),
+                            title: Text("${data['routeFrom']} to ${data['routeTo']}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text("Time: ${data['departureTime']} | Ticket: Rs.${data['price']}"),
+                            trailing: ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _startScheduledTrip(data['routeFrom'], data['routeTo'], data['price']);
+                              },
+                              child: const Text("Start", style: TextStyle(color: Colors.white)),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-              const SizedBox(height: 10),
-              const Text("Ticket price will be auto-calculated.", style: TextStyle(fontSize: 12, color: Colors.grey)),
             ],
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            onPressed: () async {
-              if (fromCtrl.text.isEmpty || toCtrl.text.isEmpty) return;
-              Navigator.pop(ctx);
-              await _calculatePriceAndStartTrip(fromCtrl.text, toCtrl.text, stopsCtrl.text);
-            },
-            child: const Text("Calculate & Start", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+        );
+      }
     );
   }
 
-  // --- දුර සහ මිල ගණනය කිරීමේ ලොජික් එක ---
-  Future<void> _calculatePriceAndStartTrip(String from, String to, String stopsString) async {
+  // --- තෝරපු ට්‍රිප් එකෙන් ගමන ආරම්භ කිරීම ---
+  Future<void> _startScheduledTrip(String from, String to, dynamic price) async {
     setState(() => _isLoading = true);
     
     try {
-      // 1. නගර වල ඛණ්ඩාංක හොයාගැනීම ('Sri Lanka' එකතු කරලා)
-      List<Location> fromLocations = await locationFromAddress("$from, Sri Lanka");
-      List<Location> toLocations = await locationFromAddress("$to, Sri Lanka");
-
-      if (fromLocations.isEmpty || toLocations.isEmpty) {
-        throw Exception("Could not find locations. Please check city names.");
-      }
-
-      // 2. දුර ගණනය කිරීම
-      double distanceInMeters = Geolocator.distanceBetween(
-        fromLocations.first.latitude, fromLocations.first.longitude,
-        toLocations.first.latitude, toLocations.first.longitude,
-      );
-      
-      double distanceInKm = distanceInMeters / 1000;
-
-      // 3. 🔥 Base Price එකත් එක්ක අලුත් මිල ගණනය කිරීම 🔥
-      double basePrice = 27.00; // ලංකාවේ සාමාන්‍ය අවම බස් ගාස්තුව
-      double ratePerKm = 4.66;  // ඉතිරි කිලෝමීටරයක් සඳහා අය කරන මුදල
-      
-      double calculatedPrice = basePrice + (distanceInKm * ratePerKm);
-      
-      // ගාණ කෙලින්ම පූර්ණ සංඛ්‍යාවකට (Whole number) රවුම් කිරීම 
-      int finalPrice = calculatedPrice.round();
-
-      // 4. Stops ටික List එකක් කිරීම
-      List<String> stopsList = stopsString.split(',').map((s) => s.trim().toLowerCase()).toList();
-      stopsList.removeWhere((element) => element.isEmpty);
-
-      // 5. GPS On කර ට්‍රිප් එක පටන් ගැනීම
       bool started = await _locationService.startTrip(widget.busId);
+      
       if (started) {
-        // 6. Firebase එකට අලුත් දත්ත යැවීම
         await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({
           'status': 'Live',
           'routeFrom': from,
           'routeTo': to,
-          'stops': stopsList,
-          'price': finalPrice.toString(), 
+          'price': price.toString(), 
         });
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Trip Started! Ticket Price: Rs. $finalPrice"), backgroundColor: Colors.green));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Trip Started!"), backgroundColor: Colors.green));
         }
       } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("GPS Permission Denied")));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("GPS Permission Denied!")));
       }
-
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error calculating route: $e"), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  // --- ට්‍රිප් එක පටන් ගැනීම සහ අවසන් කිරීම (Toggle) ---
+  // --- ට්‍රිප් එක පටන් ගැනීම සහ අවසන් කිරීම ---
   void _toggleTrip(bool isLive, double currentRevenue) async {
     if (isLive) {
       // END JOURNEY
       setState(() => _isLoading = true);
       await _locationService.stopTrip();
       
-      // A. History එකට Save කරනවා
       if (currentRevenue > 0) {
         await FirebaseFirestore.instance.collection('buses').doc(widget.busId).collection('trip_history').add({
           'revenue': currentRevenue,
@@ -144,7 +139,6 @@ class _DashboardState extends State<Dashboard> {
         });
       }
 
-      // B. Main Revenue එක 0 කරලා Status එක Idle කරනවා
       await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({
         'status': 'Idle',
         'totalRevenue': 0, 
@@ -152,7 +146,6 @@ class _DashboardState extends State<Dashboard> {
       
       setState(() => _isLoading = false);
 
-      // C. Ask to clear seats AND Complete Bookings
       if (mounted) {
         showDialog(
           context: context,
@@ -160,16 +153,13 @@ class _DashboardState extends State<Dashboard> {
             title: const Text("Journey Ended"),
             content: const Text("Clear seats and mark all current bookings as Completed?"),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("No, Keep Active")),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("No")),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
                 onPressed: () async {
                   Navigator.pop(ctx); 
-                  
-                  // 1. Seats Clear කරනවා
                   await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({'bookedSeats': []});
 
-                  // 2. Active Bookings ඔක්කොම 'completed' කරනවා
                   var batch = FirebaseFirestore.instance.batch();
                   var snapshots = await FirebaseFirestore.instance
                       .collection('bookings')
@@ -182,9 +172,7 @@ class _DashboardState extends State<Dashboard> {
                   }
                   await batch.commit(); 
 
-                  if(mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Journey Finished & Bookings Completed!")));
-                  }
+                  if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Journey Finished!")));
                 }, 
                 child: const Text("Yes, Finish All", style: TextStyle(color: Colors.white))
               ),
@@ -192,14 +180,12 @@ class _DashboardState extends State<Dashboard> {
           ),
         );
       }
-
     } else {
-      // START JOURNEY (අලුත් ක්‍රමය)
-      _startTripWithRouteSetup();
+      // START JOURNEY
+      _showTodaySchedulesAndStart(); 
     }
   }
 
-  // --- Logout Logic ---
   Future<void> _handleLogout(bool isLive) async {
     bool? confirm = await showDialog(
       context: context,
@@ -265,17 +251,15 @@ class _DashboardState extends State<Dashboard> {
           
           var data = snapshot.data!.data() as Map<String, dynamic>;
           bool isLive = data['status'] == 'Live';
-          String price = data['price'] ?? "0";
+          String price = data['price']?.toString() ?? "0";
           double revenue = (data['totalRevenue'] ?? 0).toDouble();
           String busNo = data['busNo'] ?? "Unknown Bus";
           
-          // Route Display
           String routeFrom = data['routeFrom'] != null && data['routeFrom'].toString().isNotEmpty ? data['routeFrom'] : "Not Set";
           String routeTo = data['routeTo'] != null && data['routeTo'].toString().isNotEmpty ? data['routeTo'] : "Not Set";
 
           return Column(
             children: [
-              // 1. Top Bus Status Card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
@@ -328,7 +312,6 @@ class _DashboardState extends State<Dashboard> {
                 ),
               ),
 
-              // 2. Main Actions Grid
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
@@ -349,7 +332,6 @@ class _DashboardState extends State<Dashboard> {
                 ),
               ),
 
-              // 3. Bottom Slider Button
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: const BoxDecoration(color: Colors.white),
@@ -383,7 +365,6 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  // UI Widgets
   Widget _statCard(String title, String value, IconData icon, Color textColor) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
@@ -391,7 +372,7 @@ class _DashboardState extends State<Dashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start, 
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(title, style: TextStyle(color: textColor.withOpacity(0.9), fontSize: 12))]), 
+          Text(title, style: TextStyle(color: textColor.withOpacity(0.9), fontSize: 12)), 
           const SizedBox(height: 5), 
           Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor))
         ]

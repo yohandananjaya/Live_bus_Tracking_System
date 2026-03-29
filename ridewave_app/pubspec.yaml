@@ -43,6 +43,7 @@ dependencies:
   geolocator: ^14.0.2
   image_picker: ^1.2.1
   intl: ^0.20.2
+  payhere_mobilesdk_flutter: ^3.2.2
 
 dev_dependencies:
   flutter_test:
