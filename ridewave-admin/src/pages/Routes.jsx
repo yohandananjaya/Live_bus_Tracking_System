@@ -1,50 +1,73 @@
-import { useMemo, useState } from 'react';
-
-const initialRoutes = [
-  {
-    id: 'R-101',
-    name: 'Morning Express',
-    busNo: 'BUS-014',
-    path: 'Depot -> Main Street -> Tech Park -> Central Terminal',
-    status: 'Active',
-  },
-  {
-    id: 'R-102',
-    name: 'School Connector',
-    busNo: 'BUS-031',
-    path: 'West End -> Cedar Avenue -> North High -> River Point',
-    status: 'Active',
-  },
-  {
-    id: 'R-103',
-    name: 'Night Loop',
-    busNo: 'BUS-046',
-    path: 'Terminal -> Harbor Lane -> Stadium -> Terminal',
-    status: 'Paused',
-  },
-];
+import { useEffect, useMemo, useState } from 'react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const RoutesPage = () => {
-  const [routes, setRoutes] = useState(initialRoutes);
-  const [editingId, setEditingId] = useState(null);
-  const [notice, setNotice] = useState('');
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [draft, setDraft] = useState({
-    id: '',
-    name: '',
-    busNo: '',
-    path: '',
-    status: 'Active',
+    busId: '',
+    dayOfWeek: 'Monday',
+    routeFrom: '',
+    routeTo: '',
+    departureTime: '',
+    price: '',
   });
 
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  // Fetch schedules from Firestore in real-time
+  useEffect(() => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const unsubscribe = onSnapshot(
+        collection(db, 'schedules'),
+        (snapshot) => {
+          const schedulesData = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            busId: doc.data().busId || '',
+            dayOfWeek: doc.data().dayOfWeek || 'Monday',
+            routeFrom: doc.data().routeFrom || '',
+            routeTo: doc.data().routeTo || '',
+            departureTime: doc.data().departureTime || '',
+            price: doc.data().price || 0,
+          }));
+          setSchedules(schedulesData);
+          setLoading(false);
+        },
+        (err) => {
+          console.error('Error fetching schedules:', err);
+          setError('Failed to load schedules. Please try again.');
+          setLoading(false);
+        }
+      );
+
+      return () => unsubscribe();
+    } catch (err) {
+      console.error('Error setting up schedules listener:', err);
+      setError('Error connecting to database.');
+      setLoading(false);
+    }
+  }, []);
+
   const title = useMemo(
-    () => (editingId ? `Edit Route ${editingId}` : 'Add New Route'),
-    [editingId]
+    () => 'Add New Weekly Schedule',
+    []
   );
 
   const resetDraft = () => {
-    setDraft({ id: '', name: '', busNo: '', path: '', status: 'Active' });
-    setEditingId(null);
+    setDraft({
+      busId: '',
+      dayOfWeek: 'Monday',
+      routeFrom: '',
+      routeTo: '',
+      departureTime: '',
+      price: '',
+    });
     setError('');
   };
 
@@ -57,193 +80,81 @@ const RoutesPage = () => {
     setNotice('');
     setError('');
 
-    if (!draft.id || !draft.name || !draft.busNo || !draft.path) {
-      setError('Please fill all route fields.');
+    if (!draft.busId || !draft.routeFrom || !draft.routeTo || !draft.departureTime || !draft.price) {
+      setError('Please fill all schedule fields.');
       return;
     }
 
-    if (!/^R-\d{3}$/i.test(draft.id.trim())) {
-      setError('Route ID must use format R-101.');
+    if (isNaN(parseFloat(draft.price)) || parseFloat(draft.price) <= 0) {
+      setError('Price must be a positive number.');
       return;
     }
 
-    if (!/^BUS-\d{3}$/i.test(draft.busNo.trim())) {
-      setError('Bus number must use format BUS-014.');
-      return;
-    }
-
-    const payload = {
-      id: draft.id.trim().toUpperCase(),
-      name: draft.name.trim(),
-      busNo: draft.busNo.trim().toUpperCase(),
-      path: draft.path.trim(),
-      status: draft.status,
-    };
-
-    if (editingId) {
-      setRoutes((current) => current.map((route) => (route.id === editingId ? payload : route)));
-      setNotice(`${payload.id} updated successfully.`);
-      resetDraft();
-      return;
-    }
-
-    const exists = routes.some((route) => route.id.toLowerCase() === payload.id.toLowerCase());
-    if (exists) {
-      setError('This route ID already exists.');
-      return;
-    }
-
-    setRoutes((current) => [...current, payload]);
-    setNotice(`${payload.id} added successfully.`);
+    setNotice('Schedule feature is read-only. Drivers manage schedules via their mobile app.');
     resetDraft();
-  };
-
-  const handleEdit = (route) => {
-    setEditingId(route.id);
-    setDraft(route);
-    setNotice('');
-    setError('');
-  };
-
-  const handleDelete = (routeId) => {
-    setRoutes((current) => current.filter((route) => route.id !== routeId));
-    if (editingId === routeId) resetDraft();
-    setNotice(`${routeId} deleted.`);
   };
 
   return (
     <section className="panel">
       <div className="routes-header">
         <div>
-          <h2>Routes Management</h2>
-          <p className="panel-copy">View existing routes and manage add, edit, and delete actions.</p>
+          <h2>Weekly Schedules</h2>
+          <p className="panel-copy">View bus schedules managed by drivers via the mobile app.</p>
         </div>
-        <span className="chip chip-blue">{routes.length} Routes</span>
+        <span className="chip chip-blue">{schedules.length} Schedules</span>
       </div>
 
-      <form className="form-panel" onSubmit={handleSubmit}>
-        <h3 className="routes-form-title">{title}</h3>
+      {error && <p className="form-notice error">{error}</p>}
+      {notice && <p className="form-notice success">{notice}</p>}
 
-        <div className="routes-form-grid">
-          <label className="form-field">
-            <span>Route ID</span>
-            <input
-              type="text"
-              placeholder="R-104"
-              value={draft.id}
-              onChange={(event) => handleChange('id', event.target.value)}
-              required
-            />
-          </label>
-
-          <label className="form-field">
-            <span>Route Name</span>
-            <input
-              type="text"
-              placeholder="City Center Line"
-              value={draft.name}
-              onChange={(event) => handleChange('name', event.target.value)}
-              required
-            />
-          </label>
-
-          <label className="form-field">
-            <span>Bus Number</span>
-            <input
-              type="text"
-              placeholder="BUS-055"
-              value={draft.busNo}
-              onChange={(event) => handleChange('busNo', event.target.value)}
-              required
-            />
-          </label>
-
-          <label className="form-field">
-            <span>Status</span>
-            <select value={draft.status} onChange={(event) => handleChange('status', event.target.value)}>
-              <option>Active</option>
-              <option>Paused</option>
-              <option>Completed</option>
-            </select>
-          </label>
-        </div>
-
-        <label className="form-field">
-          <span>Route Path</span>
-          <input
-            type="text"
-            placeholder="Stop A -> Stop B -> Stop C -> Stop D"
-            value={draft.path}
-            onChange={(event) => handleChange('path', event.target.value)}
-            required
-          />
-        </label>
-
-        {error && <p className="form-notice error">{error}</p>}
-        {notice && <p className="form-notice success">{notice}</p>}
-
-        <div className="form-actions">
-          <button type="button" className="ghost-btn" onClick={resetDraft}>
-            Clear
-          </button>
-          <button type="submit" className="action-btn">
-            {editingId ? 'Update Route' : 'Add Route'}
-          </button>
-        </div>
-      </form>
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Route ID</th>
-              <th>Route Name</th>
-              <th>Bus Number</th>
-              <th>Path</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {routes.map((route) => (
-              <tr key={route.id}>
-                <td>{route.id}</td>
-                <td>{route.name}</td>
-                <td>{route.busNo}</td>
-                <td>{route.path}</td>
-                <td>
-                  <span
-                    className={`chip ${
-                      route.status === 'Active'
-                        ? 'chip-green'
-                        : route.status === 'Paused'
-                        ? 'chip-amber'
-                        : 'chip-red'
-                    }`}
-                  >
-                    {route.status}
-                  </span>
-                </td>
-                <td className="actions-cell">
-                  <button type="button" onClick={() => handleEdit(route)}>
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => handleDelete(route.id)}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {routes.length === 0 && (
+      {loading ? (
+        <p className="loading-text">Loading schedules...</p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
               <tr>
-                <td className="empty-row" colSpan="6">
-                  No routes available. Add a new route to start.
-                </td>
+                <th>Bus ID</th>
+                <th>Day of Week</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Departure Time</th>
+                <th>Price (LKR)</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {schedules.length > 0 ? (
+                schedules.map((schedule) => (
+                  <tr key={schedule.id}>
+                    <td>{schedule.busId}</td>
+                    <td>{schedule.dayOfWeek}</td>
+                    <td>{schedule.routeFrom}</td>
+                    <td>{schedule.routeTo}</td>
+                    <td>{schedule.departureTime}</td>
+                    <td>{schedule.price}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="empty-row" colSpan="6">
+                    No schedules available. Drivers add schedules via their mobile app.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <article className="panel info-box">
+        <h3>ℹ️ About Schedules</h3>
+        <p>Schedules are created and managed by <strong>drivers</strong> through the mobile app. The admin panel displays these schedules for reference only.</p>
+        <ul>
+          <li>Drivers add weekly recurring schedules for their buses.</li>
+          <li>Passengers see available schedules and book seats via the passenger app.</li>
+          <li>Prices per route are set by drivers when creating schedules.</li>
+        </ul>
+      </article>
     </section>
   );
 };
