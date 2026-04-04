@@ -39,15 +39,14 @@ class BookingsScreen extends StatelessWidget {
           children: [
             const _AdvanceBookingTab(), 
             _buildBookingList(context, user.uid, ['upcoming', 'pending'], isHistoryTab: false),
-            // 🔥 History Tab එකට isHistoryTab: true කියලා යවනවා
-            _buildBookingList(context, user.uid, ['confirmed', 'completed'], isHistoryTab: true),
+            _buildBookingList(context, user.uid, ['confirmed', 'completed', 'refund_requested', 'refunded'], isHistoryTab: true),
           ],
         ),
       ),
     );
   }
 
-  // --- 🔥 අලුත්: History එක Clear කරන Function එක ---
+  // --- History එක Clear කරන Function එක ---
   Future<void> _clearHistory(BuildContext context, String userId) async {
     bool? confirm = await showDialog(
       context: context,
@@ -67,11 +66,10 @@ class BookingsScreen extends StatelessWidget {
 
     if (confirm == true) {
       try {
-        // 'completed' වුණු ඒවා විතරක් හොයලා මකනවා
         var snapshots = await FirebaseFirestore.instance
             .collection('bookings')
             .where('userId', isEqualTo: userId)
-            .where('status', isEqualTo: 'completed') 
+            .where('status', whereIn: ['completed', 'refunded']) 
             .get();
 
         var batch = FirebaseFirestore.instance.batch();
@@ -80,18 +78,13 @@ class BookingsScreen extends StatelessWidget {
         }
         await batch.commit();
 
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("History Cleared Successfully!")));
-        }
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("History Cleared Successfully!")));
       } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-        }
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
       }
     }
   }
 
-  // Booking List Widget (Clear Button එකත් එක්ක)
   Widget _buildBookingList(BuildContext context, String userId, List<String> statusList, {required bool isHistoryTab}) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -117,7 +110,6 @@ class BookingsScreen extends StatelessWidget {
 
         return Column(
           children: [
-            // 🔥 History Tab එකේ නම් විතරක් Clear History බට්න් එක පෙන්නනවා
             if (isHistoryTab)
               Padding(
                 padding: const EdgeInsets.only(right: 20, top: 10),
@@ -139,9 +131,10 @@ class BookingsScreen extends StatelessWidget {
                   var doc = snapshot.data!.docs[index];
                   var data = doc.data() as Map<String, dynamic>;
 
-                  String bookingId = doc.id;
+                  String bookingDocId = doc.id;
+                  String bookingRef = data['bookingRef'] ?? 'N/A';
                   String busId = data['busId'] ?? '';
-                  String busName = data['busName'] ?? 'Bus';
+                  String busNo = data['busNo'] ?? 'Bus';
                   String route = data['route'] ?? '';
                   String date = data['travelDate'] ?? 'Unknown Date'; 
                   List<dynamic> seats = data['seats'] ?? [];
@@ -149,7 +142,7 @@ class BookingsScreen extends StatelessWidget {
                   String price = "Rs. ${data['totalPrice']}";
                   String status = data['status'] ?? 'upcoming'; 
 
-                  return _buildBookingCard(context, bookingId, busId, busName, route, date, seatsString, seats, price, status);
+                  return _buildBookingCard(context, bookingDocId, bookingRef, busId, busNo, route, date, seatsString, seats, price, status, (data['totalPrice'] ?? 0).toDouble());
                 },
               ),
             ),
@@ -159,19 +152,58 @@ class BookingsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _cancelBooking(BuildContext context, String bookingId, String busId, List<dynamic> seats) async {
-    try {
-      await FirebaseFirestore.instance.collection('bookings').doc(bookingId).delete();
-      await FirebaseFirestore.instance.collection('buses').doc(busId).update({
-        'bookedSeats': FieldValue.arrayRemove(seats)
-      });
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Booking Cancelled Successfully")));
-    } catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error cancelling: $e")));
+  // --- Cancel Booking Function (10% Refund Logic) ---
+  Future<void> _cancelBooking(BuildContext context, String bookingDocId, String busId, List<dynamic> seats, String currentStatus, double price) async {
+    bool isPaid = currentStatus == 'confirmed';
+    double refundAmount = isPaid ? (price * 0.9) : price; 
+    double adminFee = isPaid ? (price * 0.05) : 0; 
+    double driverFee = isPaid ? (price * 0.05) : 0;
+
+    bool? confirm = await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Cancel Booking?"),
+        content: Text(
+          isPaid 
+          ? "A 10% cancellation fee will be deducted.\nYou will receive a refund of Rs. ${refundAmount.toStringAsFixed(2)}.\n\nProceed to cancel?" 
+          : "Are you sure you want to cancel this booking?"
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("No")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text("Yes, Cancel", style: TextStyle(color: Colors.white))
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        if (isPaid) {
+          await FirebaseFirestore.instance.collection('bookings').doc(bookingDocId).update({
+            'status': 'refund_requested',
+            'refundAmount': refundAmount,
+            'adminFee': adminFee,
+            'driverFee': driverFee,
+            'requestedAt': FieldValue.serverTimestamp(),
+          });
+          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Refund Requested. Admin will process it soon.")));
+        } else {
+          await FirebaseFirestore.instance.collection('bookings').doc(bookingDocId).delete();
+          await FirebaseFirestore.instance.collection('buses').doc(busId).update({
+            'bookedSeats': FieldValue.arrayRemove(seats)
+          });
+          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Booking Cancelled.")));
+        }
+      } catch (e) {
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     }
   }
 
-  Widget _buildBookingCard(BuildContext context, String bookingId, String busId, String busName, String route, String date, String seatsString, List<dynamic> seatList, String price, String status) {
+  Widget _buildBookingCard(BuildContext context, String bookingDocId, String bookingRef, String busId, String busNo, String route, String date, String seatsString, List<dynamic> seatList, String price, String status, double rawPrice) {
     Color statusColor;
     String statusText;
     bool showCancelButton = false;
@@ -179,9 +211,16 @@ class BookingsScreen extends StatelessWidget {
     if (status == 'confirmed') {
       statusColor = Colors.green;
       statusText = "Confirmed";
+      showCancelButton = true;
     } else if (status == 'completed') {
       statusColor = Colors.grey;
       statusText = "Completed";
+    } else if (status == 'refund_requested') {
+      statusColor = Colors.purple;
+      statusText = "Refund Pending";
+    } else if (status == 'refunded') {
+      statusColor = Colors.redAccent;
+      statusText = "Refunded";
     } else {
       statusColor = Colors.orange;
       statusText = "Scheduled";
@@ -193,6 +232,7 @@ class BookingsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))]),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -200,7 +240,7 @@ class BookingsScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(5)),
-                child: Text(busName, style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                child: Text(busNo, style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -209,7 +249,9 @@ class BookingsScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 10),
+          Text("Booking Ref: $bookingRef", style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -249,7 +291,7 @@ class BookingsScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () => _cancelBooking(context, bookingId, busId, seatList),
+                onPressed: () => _cancelBooking(context, bookingDocId, busId, seatList, status, rawPrice),
                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                 child: const Text("Cancel Booking", style: TextStyle(color: Colors.red)),
               ),
@@ -261,7 +303,7 @@ class BookingsScreen extends StatelessWidget {
   }
 }
 
-// Search (Advance Booking) Tab එකේ UI එක
+// Search (Advance Booking) Tab
 class _AdvanceBookingTab extends StatefulWidget {
   const _AdvanceBookingTab();
 
