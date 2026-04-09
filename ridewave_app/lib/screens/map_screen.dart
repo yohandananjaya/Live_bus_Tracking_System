@@ -40,7 +40,7 @@ class _MapScreenState extends State<MapScreen> {
         setState(() {
           _myLocation = LatLng(position.latitude, position.longitude);
         });
-        // අපේ තැනට Map එක හරවනවා (Optional)
+        // අපේ තැනට Map එක හරවනවා
         _mapController.move(_myLocation!, 15.0);
       }
     } catch (e) {
@@ -51,9 +51,14 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: _getCurrentLocation, // බටන් එක එබුවම ආයේ ලොකේෂන් හොයනවා
-        child: const Icon(Icons.my_location),
+      // 🔥 වෙනස් කළ තැන: Button එක Navigation Bar එකට උඩින් පේන්න Padding දැම්මා
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 90.0), 
+        child: FloatingActionButton(
+          backgroundColor: Colors.blue[800], // පාට වෙනස් කළා
+          onPressed: _getCurrentLocation, 
+          child: const Icon(Icons.my_location, color: Colors.white),
+        ),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -92,7 +97,6 @@ class _MapScreenState extends State<MapScreen> {
                 child: const Column(
                   children: [
                     Icon(Icons.location_on, color: Colors.red, size: 40),
-                    // Text("Me", style: TextStyle(fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),

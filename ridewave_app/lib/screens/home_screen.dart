@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
-import 'search_ride_screen.dart'; 
 import 'select_seat_screen.dart'; 
 import 'emergency_screen.dart';
 import 'report_issue_screen.dart';
-import 'profile_screen.dart'; // 🔥 Profile Screen එක මෙතනට Import කරලා තියෙන්නේ
+import 'profile_screen.dart'; 
+import 'bookings_screen.dart'; // 🔥 අලුත් Bookings Screen එක මෙතනට Import කළා
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -182,7 +182,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   // 2. QUICK ACTIONS
                   Row(
                     children: [
-                      Expanded(child: _buildQuickActionCard(context, Icons.calendar_month_rounded, "Book Seat", Colors.blue[800]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchRideScreen())))),
+                      // 🔥 වෙනස් කළ තැන: Book Seat එබුවම කෙලින්ම BookingsScreen (Search Tab) එකට යනවා
+                      Expanded(child: _buildQuickActionCard(context, Icons.calendar_month_rounded, "Book Seat", Colors.blue[800]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BookingsScreen())))),
                       const SizedBox(width: 10),
                       Expanded(child: _buildQuickActionCard(context, Icons.report_problem_rounded, "Report", Colors.orange, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportIssueScreen())))),
                       const SizedBox(width: 10),
