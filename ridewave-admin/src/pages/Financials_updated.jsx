@@ -262,7 +262,7 @@ const Financials = () => {
             fontWeight: activeTab === 'revenue' ? 'bold' : 'normal',
           }}
         >
-          💰 Revenue ({bookings.length})
+          Revenue ({bookings.length})
         </button>
         <button
           onClick={() => setActiveTab('refunds')}
@@ -276,7 +276,7 @@ const Financials = () => {
             fontWeight: activeTab === 'refunds' ? 'bold' : 'normal',
           }}
         >
-          🔄 Refunds ({refundRequests.length})
+           Refunds ({refundRequests.length})
         </button>
         <button
           onClick={() => setActiveTab('payouts')}
@@ -290,7 +290,7 @@ const Financials = () => {
             fontWeight: activeTab === 'payouts' ? 'bold' : 'normal',
           }}
         >
-          🤑 Payouts
+          Payouts
         </button>
       </div>
 
@@ -452,7 +452,7 @@ const Financials = () => {
       )}
 
       <article className="panel info-box" style={{ marginTop: '2rem' }}>
-        <h3>ℹ️ Financial Workflow</h3>
+        <h3>Financial Workflow</h3>
         <ul>
           <li><strong>Revenue:</strong> Only counts confirmed & completed bookings (25% commission retained)</li>
           <li><strong>Refunds:</strong> 10% deduction (5% admin, 5% driver fee) when passengers cancel</li>
