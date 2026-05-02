@@ -4,12 +4,15 @@ import { db } from '../firebase.js';
 
 const initialDraft = {
   busNo: '',
+  busChasisNo:'',
   busType: '',
   totalSeats: '',
   ownerName: '',
   ownerNIC: '',
-  driverContact: '',
+  ownerContact: '',
   accessCode: '',
+  ownerAddress: '',
+  
 };
 
 const statusOrder = { Active: 0, Idle: 1, Delayed: 2, Offline: 3 };
@@ -96,11 +99,12 @@ const Buses = () => {
 
     const payload = {
       busNo: draft.busNo.trim().toUpperCase(),
+      chasisNo:draft.busChasisNo.trim(),
       busType: draft.busType.trim(),
       totalSeats: Number(draft.totalSeats),
       ownerName: draft.ownerName.trim(),
       ownerNIC: draft.ownerNIC.trim(),
-      driverContact: draft.driverContact.trim(),
+      ownerContact: draft.ownerContact.trim(),
       accessCode: draft.accessCode || generateAccessCode(),
       routeFrom: editingBus?.routeFrom ?? '',
       routeTo: editingBus?.routeTo ?? '',
@@ -145,7 +149,7 @@ const Buses = () => {
       totalSeats: bus.totalSeats ?? '',
       ownerName: bus.ownerName || '',
       ownerNIC: bus.ownerNIC || '',
-      driverContact: bus.driverContact || '',
+      ownerContact: bus.ownerContact || '',
       accessCode: bus.accessCode || '',
     });
     setNotice('');
@@ -264,17 +268,17 @@ const Buses = () => {
             <input
               type="text"
               placeholder="0712345678"
-              value={draft.driverContact}
-              onChange={(event) => setDraft((current) => ({ ...current, driverContact: event.target.value }))}
+              value={draft.ownerContact}
+              onChange={(event) => setDraft((current) => ({ ...current, ownerContact: event.target.value }))}
               required
             />
           </label>
           
           <label className="form-field">
-            <span>Owner Contact Number</span>
+            <span>Owner Address</span>
             <input
               type="text"
-              placeholder="0712345678"
+              placeholder="67/A, Hapugala, Galle"
               value={draft.driverContact}
               onChange={(event) => setDraft((current) => ({ ...current, driverContact: event.target.value }))}
               required

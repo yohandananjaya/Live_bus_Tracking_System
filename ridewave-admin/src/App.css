@@ -295,6 +295,11 @@ body {
   gap: 16px;
 }
 
+.panelSuper {
+  display: grid;
+  gap: 16px;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -347,6 +352,18 @@ body {
   box-shadow: 0 12px 35px rgba(8, 15, 23, 0.12);
 }
 
+.panelNew{
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 12px 35px rgba(8, 15, 23, 0.12);
+  
+}
+
+
+
+
 .panel-head {
   display: flex;
   align-items: center;
@@ -372,6 +389,24 @@ body {
   transform: translate(-50%, -50%);
   z-index: 30;
   width: min(760px, calc(100% - 32px));
+  background: #ffffff;
+  border: 1px solid rgba(12, 41, 61, 0.16);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(3, 14, 24, 0.28);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+}
+
+.report-modalNew {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  width: min(460px, calc(100% - 32px));
   background: #ffffff;
   border: 1px solid rgba(12, 41, 61, 0.16);
   border-radius: 16px;
@@ -962,6 +997,13 @@ th {
   border: 1px solid rgba(17, 56, 83, 0.18);
 }
 
+.real-map-canvasNew {
+  height: 500px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(17, 56, 83, 0.18);
+}
+
 .live-map-canvas {
   height: 460px;
 }
@@ -1221,6 +1263,13 @@ th {
   gap: 12px;
 }
 
+.auth-formSuper {
+  display: grid;
+ 
+  gap: 12px;
+}
+
+
 .auth-field {
   display: grid;
   gap: 6px;
@@ -1375,6 +1424,13 @@ th {
 
 .tab:hover{
   color: #0ea5a6;
+}
+
+.super{
+  display: flex;
+  background-color: red;
+  width:100px;
+  height:100px;
 }
 
 @keyframes fadeUp {

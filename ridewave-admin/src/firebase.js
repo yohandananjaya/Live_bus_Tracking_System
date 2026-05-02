@@ -1,8 +1,8 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getFunctions } from "firebase/functions";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCNjN-xwyJptzzZoLQTU4-PE1sDFl9GVLQ",
   authDomain: "ridewave-af666.firebaseapp.com",
@@ -12,8 +12,9 @@ const firebaseConfig = {
   appId: "1:441162316910:web:28ac0d44719f3c2dd0fa7f"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const functions = getFunctions(app);
 
-export { app, db };
+export { app, db, auth, functions };

@@ -189,8 +189,6 @@ const Dashboard = () => {
           </article>
         ))}
       </section>
-
-      <section className="dashboard-grid">
         <article className="panel map-preview">
           <div className="panel-head">
             <h2>Track Buses</h2>
@@ -240,22 +238,6 @@ const Dashboard = () => {
           </div>
         </article>
 
-        <article className="panel">
-          <div className="panel-head">
-            <h2>Quick Alerts</h2>
-            <span className="chip chip-red">Live</span>
-          </div>
-          <div className="message-list">
-            {quickAlerts.map((alert) => (
-              <div key={`${alert.bus}-${alert.time}`} className="message-item">
-                <strong>{alert.type} • {alert.bus}</strong>
-                <p>{alert.text}</p>
-                <small>{alert.time}</small>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
 
       <section className="panel">
         <div className="panel-head">

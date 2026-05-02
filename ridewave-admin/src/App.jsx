@@ -12,6 +12,9 @@ import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import "./App.css";
 
+import { ToastContainer } from 'react-toastify';
+import SuperAdmin from './pages/SuperAdmin.jsx';
+
 const NotFoundPage = () => (
   <section className="panel not-found">
     <h2>Page Not Found</h2>
@@ -38,6 +41,7 @@ const PublicOnlyRoute = ({ children }) => {
 function App() {
   return (
     <Router>
+      
       <Routes>
         <Route path="/signin" element={<PublicOnlyRoute><SignIn /></PublicOnlyRoute>} />
         <Route path="/signup" element={<PublicOnlyRoute><SignUp /></PublicOnlyRoute>} />
@@ -49,11 +53,12 @@ function App() {
             <Route path="fleet" element={<Buses />} />
             <Route path="financials" element={<Financials />} />
             <Route path="support" element={<Support />} />
-            
+            <Route path="super" element={<SuperAdmin/>}/>
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>
       </Routes>
+      <ToastContainer/>
     </Router>
   );
 }

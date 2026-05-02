@@ -2,12 +2,9 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const SignUp = () => {
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
+  const [username, setUsername]=useState('')
+  const [email, setEmail]=useState('')
+  const [password, setpassword] = useState('')
 
   const handleChange = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -28,7 +25,7 @@ const SignUp = () => {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-field">
-            <span>Name</span>
+            <span>Username</span>
             <input
               id="name"
               name="name"
@@ -36,7 +33,7 @@ const SignUp = () => {
               autoComplete="name"
               required
               value={form.name}
-              onChange={(event) => handleChange('name', event.target.value)}
+              onChange={(e) => setUsername(e.target.value)}
             />
           </label>
 
@@ -49,7 +46,7 @@ const SignUp = () => {
               autoComplete="email"
               required
               value={form.email}
-              onChange={(event) => handleChange('email', event.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </label>
 
@@ -62,7 +59,7 @@ const SignUp = () => {
               autoComplete="new-password"
               required
               value={form.password}
-              onChange={(event) => handleChange('password', event.target.value)}
+              onChange={(e) => setpassword(e.target.value)}
             />
           </label>
 

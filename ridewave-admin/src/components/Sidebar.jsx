@@ -7,6 +7,7 @@ const navItems = [
   { to: '/live-tracking', label: 'Live Tracking' },
   { to: '/financials', label: 'Financials & Payouts' },
   { to: '/support', label: 'Support & SOS' },
+  { to:'/super', label: 'Super'}
 ];
 
 const Sidebar = ({ onNavigate }) => {
