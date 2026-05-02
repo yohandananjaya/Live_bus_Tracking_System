@@ -5,7 +5,7 @@ import MainLayout from "./components/Layout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import LiveMap from "./pages/LiveMap.jsx";
 import Buses from "./pages/Buses.jsx";
-import Financials from "./pages/Financials.jsx";
+import Financials from "./pages/Financials_updated.jsx";
 import Support from "./pages/Support.jsx";
 
 import SignIn from "./pages/SignIn.jsx";

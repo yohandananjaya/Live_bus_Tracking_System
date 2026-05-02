@@ -235,9 +235,7 @@ const Buses = () => {
               required
             />
           </label>
-        </div>
-
-        <div className="form-grid">
+          
           <label className="form-field">
             <span>Owner Name</span>
             <input
@@ -248,6 +246,9 @@ const Buses = () => {
               required
             />
           </label>
+        </div>
+
+        <div className="form-grid">
           <label className="form-field">
             <span>Owner NIC / ID Number</span>
             <input
@@ -268,6 +269,28 @@ const Buses = () => {
               required
             />
           </label>
+          
+          <label className="form-field">
+            <span>Owner Contact Number</span>
+            <input
+              type="text"
+              placeholder="0712345678"
+              value={draft.driverContact}
+              onChange={(event) => setDraft((current) => ({ ...current, driverContact: event.target.value }))}
+              required
+            />
+          </label>
+          <label className="form-field">
+            <span>Owner Contact Number</span>
+            <input
+              type="text"
+              placeholder="0712345678"
+              value={draft.driverContact}
+              onChange={(event) => setDraft((current) => ({ ...current, driverContact: event.target.value }))}
+              required
+            />
+          </label>
+          
         </div>
 
         <div className="access-code-row">
