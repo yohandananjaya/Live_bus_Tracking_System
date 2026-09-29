@@ -48,7 +48,7 @@ class _MainLayoutState extends State<MainLayout> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.blue[900]!.withOpacity(0.85),
+                  color: const Color(0xFF1565C0).withOpacity(0.6),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,

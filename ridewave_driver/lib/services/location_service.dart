@@ -12,37 +12,55 @@ class LocationService {
   String? currentBusId;
 
   // Start Trip
-  Future<bool> startTrip(String busId) async {
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return false;
-    }
-    if (permission == LocationPermission.deniedForever) return false;
-
+  Future<bool> startTrip(String busId, bool usePhoneGPS) async {
     isTripActive = true;
     currentBusId = busId;
 
-    const LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 10,
-    );
-
-    _positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-      (Position position) {
-        if (currentBusId != null) {
-          FirebaseFirestore.instance.collection('buses').doc(currentBusId).update({
-            'latitude': position.latitude,
-            'longitude': position.longitude,
-            'status': 'Live',
-            'heading': position.heading,
-            'speed': position.speed,
-            'lastUpdated': FieldValue.serverTimestamp(),
-          });
+    if (usePhoneGPS) {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          isTripActive = false;
+          currentBusId = null;
+          return false;
         }
-      },
-    );
-    return true;
+      }
+      if (permission == LocationPermission.deniedForever) {
+        isTripActive = false;
+        currentBusId = null;
+        return false;
+      }
+
+      const LocationSettings locationSettings = LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
+      );
+
+      _positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+        (Position position) {
+          if (currentBusId != null) {
+            FirebaseFirestore.instance.collection('buses').doc(currentBusId).update({
+              'latitude': position.latitude,
+              'longitude': position.longitude,
+              'status': 'Live',
+              'gpsSource': 'Phone',
+              'heading': position.heading,
+              'speed': position.speed,
+              'lastUpdated': FieldValue.serverTimestamp(),
+            });
+          }
+        },
+      );
+      
+      return true;
+    } else {
+      await FirebaseFirestore.instance.collection('buses').doc(currentBusId).update({
+        'status': 'Live',
+        'gpsSource': 'Hardware',
+      });
+      return true;
+    }
   }
 
   // Stop Trip

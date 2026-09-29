@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -18,6 +19,29 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _searchFrom = "";
   String _searchTo = "";
+  final FocusNode _searchFromFocus = FocusNode();
+  final FocusNode _searchToFocus = FocusNode();
+  bool _isSearchFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchFromFocus.addListener(_onFocusChange);
+    _searchToFocus.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    setState(() {
+      _isSearchFocused = _searchFromFocus.hasFocus || _searchToFocus.hasFocus;
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchFromFocus.dispose();
+    _searchToFocus.dispose();
+    super.dispose();
+  }
 
   // දුර සහ පැමිණීමට ගතවන කාලය ගණනය කරන Function එක
   Future<void> _showArrivalEstimate(BuildContext context, Map<String, dynamic> busData) async {
@@ -77,19 +101,34 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.grey[50],
       body: Stack(
         children: [
-          // 1. BLUE BACKGROUND
+          // 1. BLUE BACKGROUND (Updated to Image with Gradient Overlay)
           Container(
             height: 300, 
             width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.blue[900]!, Colors.blue[700]!], 
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/home_bg.jpg'),
+                fit: BoxFit.cover,
               ),
-              borderRadius: const BorderRadius.only(
+              borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(40),
                 bottomRight: Radius.circular(40),
+              ),
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.4), 
+                    Colors.blue[900]!.withOpacity(0.8)
+                  ], 
+                ),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(40),
+                  bottomRight: Radius.circular(40),
+                ),
               ),
             ),
           ),
@@ -143,37 +182,52 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 25),
 
                   // 1. LIVE SEARCH BOX
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
+                  Card(
+                    elevation: 0,
+                    color: Colors.transparent,
+                    child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        TextField(
-                          onChanged: (value) => setState(() => _searchFrom = value.toLowerCase().trim()),
-                          decoration: const InputDecoration(
-                            icon: Icon(Icons.my_location, color: Colors.blue),
-                            hintText: "From (Start Location)",
-                            hintStyle: TextStyle(color: Colors.grey),
-                            border: InputBorder.none, contentPadding: EdgeInsets.zero,
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: _isSearchFocused ? 8.0 : 2.0, 
+                          sigmaY: _isSearchFocused ? 8.0 : 2.0
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(_isSearchFocused ? 0.3 : 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.5)),
+                          ),
+                          child: Column(
+                            children: [
+                              TextField(
+                                focusNode: _searchFromFocus,
+                                onChanged: (value) => setState(() => _searchFrom = value.toLowerCase().trim()),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                decoration: const InputDecoration(
+                                  icon: Icon(Icons.my_location, color: Colors.blue),
+                                  hintText: "From (Start Location)",
+                                  hintStyle: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                                  border: InputBorder.none, contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                              const Divider(height: 30, thickness: 1), 
+                              TextField(
+                                focusNode: _searchToFocus,
+                                onChanged: (value) => setState(() => _searchTo = value.toLowerCase().trim()),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                decoration: const InputDecoration(
+                                  icon: Icon(Icons.location_on, color: Colors.red),
+                                  hintText: "To (Destination)",
+                                  hintStyle: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                                  border: InputBorder.none, contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const Divider(height: 30, thickness: 1), 
-                        TextField(
-                          onChanged: (value) => setState(() => _searchTo = value.toLowerCase().trim()),
-                          decoration: const InputDecoration(
-                            icon: Icon(Icons.location_on, color: Colors.red),
-                            hintText: "To (Destination)",
-                            hintStyle: TextStyle(color: Colors.grey),
-                            border: InputBorder.none, contentPadding: EdgeInsets.zero,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
 
@@ -296,9 +350,26 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 15),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 3))]),
-        child: Column(children: [Icon(icon, color: color, size: 28), const SizedBox(height: 8), Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87))]),
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.white, 
+          borderRadius: BorderRadius.circular(20), 
+          boxShadow: [
+            BoxShadow(color: color.withOpacity(0.15), blurRadius: 20, offset: const Offset(0, 8))
+          ]
+        ),
+        child: Column(children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ), 
+          const SizedBox(height: 12), 
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87))
+        ]),
       ),
     );
   }

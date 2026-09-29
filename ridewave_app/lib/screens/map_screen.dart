@@ -53,7 +53,7 @@ class _MapScreenState extends State<MapScreen> {
     return Scaffold(
       // 🔥 වෙනස් කළ තැන: Button එක Navigation Bar එකට උඩින් පේන්න Padding දැම්මා
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 90.0), 
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 90.0), 
         child: FloatingActionButton(
           backgroundColor: Colors.blue[800], // පාට වෙනස් කළා
           onPressed: _getCurrentLocation, 

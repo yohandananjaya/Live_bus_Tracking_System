@@ -59,6 +59,14 @@ class _TimeTableScreenState extends State<TimeTableScreen> {
                   setDialogState(() => isCalculating = true);
 
                   try {
+                    // 🔥 වෙනස් කළ තැන: බස් එකේ නම (busNo) Database එකෙන් ගන්නවා
+                    DocumentSnapshot busDoc = await FirebaseFirestore.instance.collection('buses').doc(widget.busId).get();
+                    String fetchedBusNo = 'Unknown Bus';
+                    if (busDoc.exists) {
+                      var busData = busDoc.data() as Map<String, dynamic>;
+                      fetchedBusNo = busData['busNo'] ?? 'Unknown Bus';
+                    }
+
                     DocumentSnapshot settingsDoc = await FirebaseFirestore.instance.collection('settings').doc('pricing').get();
                     double basePrice = 27.0; 
                     double ratePerKm = 5.0;  
@@ -82,6 +90,7 @@ class _TimeTableScreenState extends State<TimeTableScreen> {
 
                     Map<String, dynamic> scheduleData = {
                       'busId': widget.busId,
+                      'busNo': fetchedBusNo, // 🔥 වෙනස් කළ තැන: අර ගත්ත නම මෙතන සේව් කරනවා
                       'dayOfWeek': _selectedDay,
                       'routeFrom': startLocCtrl.text.trim(),
                       'routeTo': endLocCtrl.text.trim(),

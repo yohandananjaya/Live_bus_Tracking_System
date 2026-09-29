@@ -79,7 +79,7 @@ class _DashboardState extends State<Dashboard> {
                               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                               onPressed: () {
                                 Navigator.pop(ctx);
-                                _startScheduledTrip(data['routeFrom'], data['routeTo'], data['price']);
+                                _showGpsSelectionDialog(data['routeFrom'], data['routeTo'], data['price']);
                               },
                               child: const Text("Start", style: TextStyle(color: Colors.white)),
                             ),
@@ -97,19 +97,50 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
+  void _showGpsSelectionDialog(String from, String to, dynamic price) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Select GPS Source"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.smartphone),
+              title: const Text("Phone Location"),
+              onTap: () {
+                Navigator.pop(ctx);
+                _startScheduledTrip(from, to, price, true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.memory),
+              title: const Text("Hardware Tracker"),
+              onTap: () {
+                Navigator.pop(ctx);
+                _startScheduledTrip(from, to, price, false);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // --- තෝරපු ට්‍රිප් එකෙන් ගමන ආරම්භ කිරීම ---
-  Future<void> _startScheduledTrip(String from, String to, dynamic price) async {
+  Future<void> _startScheduledTrip(String from, String to, dynamic price, bool usePhoneGPS) async {
     setState(() => _isLoading = true);
     
     try {
-      bool started = await _locationService.startTrip(widget.busId);
+      bool started = await _locationService.startTrip(widget.busId, usePhoneGPS);
       
       if (started) {
         await FirebaseFirestore.instance.collection('buses').doc(widget.busId).update({
           'status': 'Live',
           'routeFrom': from,
           'routeTo': to,
-          'price': price.toString(), 
+          'price': price.toString(),
+          'gpsSource': usePhoneGPS ? 'Phone' : 'Hardware',
         });
 
         if (mounted) {

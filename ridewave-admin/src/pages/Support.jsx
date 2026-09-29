@@ -1,120 +1,64 @@
-import { useState } from 'react';
-
-const passengerReports = [
-  {
-    id: 'RS-101',
-    busNo: 'ND-4532',
-    route: 'Colombo -> Kandy',
-    message: 'Driver skipped the Kegalle stop without notice.',
-    severity: 'High',
-    passenger: 'N. Silva',
-    time: '6m ago',
-    type: 'Report',
-  },
-  {
-    id: 'SOS-204',
-    busNo: 'ND-6711',
-    route: 'Negombo -> Colombo',
-    message: 'Passenger collapsed near seat 14. Needs medical support.',
-    severity: 'Critical',
-    passenger: 'K. Perera',
-    time: '2m ago',
-    type: 'SOS',
-  },
-];
-
-const driverReports = [
-  {
-    id: 'SOS-301',
-    busNo: 'ND-8888',
-    route: 'Galle -> Matara',
-    message: 'Brake warning light on. Stopping at next safe point.',
-    severity: 'High',
-    driver: 'T. Jayasuriya',
-    time: '9m ago',
-    type: 'SOS',
-  },
-  {
-    id: 'RS-412',
-    busNo: 'ND-4532',
-    route: 'Colombo -> Kandy',
-    message: 'Traffic blocked near Kadawatha interchange. Need reroute guidance.',
-    severity: 'Medium',
-    driver: 'R. Mendis',
-    time: '12m ago',
-    type: 'Report',
-  },
-];
-
-const authorities = [
-  { id: 'transport', label: 'Transport Control' },
-  { id: 'police', label: 'Police' },
-  { id: 'emergency', label: 'Emergency Service' },
-];
+import { useEffect, useState } from 'react';
+import { collection, query, onSnapshot, updateDoc, doc, where } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const Support = () => {
-  const [activeTab, setActiveTab] = useState('passenger');
-  const [alerts, setAlerts] = useState(passengerReports);
-  const [replyDrafts, setReplyDrafts] = useState({});
-  const [replies, setReplies] = useState({});
-  const [authorityLogs, setAuthorityLogs] = useState({});
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState('');
 
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setAlerts(tab === 'passenger' ? passengerReports : driverReports);
-    setNotice('');
+  // Firebase එකෙන් Real-time Reports ගන්නවා
+  useEffect(() => {
+    const q = query(
+      collection(db, 'admin_reports'),
+      where('status', '==', 'pending') // විසඳපු නැති ඒවා විතරයි
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const reportsData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      // අලුත්ම ඒවා උඩට එන්න Sort කරනවා
+      reportsData.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+      setAlerts(reportsData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // ප්‍රශ්නය විසඳුවාම Status එක Update කරනවා
+  const handleResolve = async (alertId) => {
+    try {
+      await updateDoc(doc(db, 'admin_reports', alertId), {
+        status: 'resolved',
+        resolvedAt: new Date().toISOString()
+      });
+      setNotice(`Issue marked as resolved!`);
+      setTimeout(() => setNotice(''), 3000);
+    } catch (error) {
+      console.error("Error resolving:", error);
+    }
   };
 
-  const handleReplyChange = (alertId, value) => {
-    setReplyDrafts((current) => ({ ...current, [alertId]: value }));
-  };
-
-  const handleSendReply = (alertId) => {
-    const text = (replyDrafts[alertId] || '').trim();
-    if (!text) return;
-
-    setReplies((current) => ({ ...current, [alertId]: text }));
-    setReplyDrafts((current) => ({ ...current, [alertId]: '' }));
-    setNotice(`Reply sent for ${alertId}.`);
-  };
-
-  const handleConnectAuthority = (alertId, authority) => {
-    setAuthorityLogs((current) => ({
-      ...current,
-      [alertId]: `Connected to ${authority} at ${new Date().toLocaleTimeString()}`,
-    }));
-    setNotice(`${alertId} escalated to ${authority}.`);
-  };
-
-  const handleResolve = (alertId) => {
-    setAlerts((current) => current.filter((alert) => alert.id !== alertId));
-    setNotice(`${alertId} marked as resolved.`);
-  };
+  if (loading) {
+    return (
+      <section className="panel">
+        <div className="alerts-head"><h2>System Reports & SOS</h2></div>
+        <p className="loading-text">Loading real-time alerts...</p>
+      </section>
+    );
+  }
 
   return (
     <section className="panel">
       <div className="alerts-head">
         <div>
-          <div style={{ display: 'flex', gap: '1ch', alignItems: 'center' }}>
-            <button
-              type="button"
-              style={{ backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
-              onClick={() => handleTabChange('passenger')}
-            >
-              <h2 className={activeTab === 'passenger' ? 'tab tab-active' : 'tab'}>Passenger Reports</h2>
-            </button>
-            <button
-              type="button"
-              style={{ backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
-              onClick={() => handleTabChange('driver')}
-            >
-              <h2 className={activeTab === 'driver' ? 'tab tab-active' : 'tab'}>Driver SOS</h2>
-            </button>
-          </div>
-          <p className="panel-copy">Review complaints, SOS alerts, and resolve incidents quickly.</p>
+          <h2>System Reports & SOS</h2>
+          <p className="panel-copy">Review live complaints and issues from drivers and passengers.</p>
         </div>
-        <span className="chip chip-red">{alerts.length} Open</span>
+        <span className="chip chip-red">{alerts.length} Pending</span>
       </div>
 
       {notice && <p className="form-notice success">{notice}</p>}
@@ -124,69 +68,24 @@ const Support = () => {
           <article key={alert.id} className="alert-ticket">
             <div className="alert-ticket-head">
               <div>
-                <strong>{alert.id}</strong>
-                <p>{alert.busNo} | {alert.route}</p>
+                <strong>Bus ID: {alert.busId || 'Unknown'}</strong>
+                <p>Reported Issue</p>
               </div>
               <div className="alert-meta">
-                <span
-                  className={`chip ${
-                    alert.severity === 'Critical'
-                      ? 'chip-red'
-                      : alert.severity === 'High'
-                      ? 'chip-amber'
-                      : 'chip-blue'
-                  }`}
-                >
-                  {alert.type}
-                </span>
-                <small>{alert.time}</small>
+                <span className="chip chip-amber">Pending</span>
+                <small>{alert.timestamp?.toDate().toLocaleString() || 'Just now'}</small>
               </div>
             </div>
 
             <p className="alert-passenger">
-              <strong>{activeTab === 'passenger' ? 'Passenger' : 'Driver'}:</strong>{' '}
-              {activeTab === 'passenger' ? alert.passenger : alert.driver}
+              <strong>Source:</strong> Driver App / System
             </p>
-            <p className="alert-message">{alert.message}</p>
+            <p className="alert-message" style={{ fontSize: '15px', color: '#d32f2f', fontWeight: 'bold' }}>
+              {alert.issue}
+            </p>
 
-            <div className="alert-reply-row">
-              <input
-                type="text"
-                placeholder="Type a response..."
-                value={replyDrafts[alert.id] || ''}
-                onChange={(event) => handleReplyChange(alert.id, event.target.value)}
-              />
-              <button type="button" className="action-btn" onClick={() => handleSendReply(alert.id)}>
-                Send Reply
-              </button>
-            </div>
-
-            {replies[alert.id] && (
-              <p className="alert-reply-preview"><strong>Last reply:</strong> {replies[alert.id]}</p>
-            )}
-
-            <div className="authority-row">
-              <span>Connect with authority:</span>
-              <div className="authority-buttons">
-                {authorities.map((authority) => (
-                  <button
-                    key={authority.id}
-                    type="button"
-                    className="ghost-btn"
-                    onClick={() => handleConnectAuthority(alert.id, authority.label)}
-                  >
-                    {authority.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {authorityLogs[alert.id] && (
-              <p className="authority-log">{authorityLogs[alert.id]}</p>
-            )}
-
-            <div className="alert-actions">
-              <button type="button" className="ghost-btn" onClick={() => handleResolve(alert.id)}>
+            <div className="alert-actions" style={{ marginTop: '15px' }}>
+              <button type="button" className="action-btn" onClick={() => handleResolve(alert.id)}>
                 Mark as Resolved
               </button>
             </div>
@@ -196,7 +95,7 @@ const Support = () => {
 
       {alerts.length === 0 && (
         <div className="empty-alerts">
-          <p>All alerts are resolved.</p>
+          <p>Great! All alerts are resolved right now.</p>
         </div>
       )}
     </section>

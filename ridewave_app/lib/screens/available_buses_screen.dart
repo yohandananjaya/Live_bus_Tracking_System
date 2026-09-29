@@ -58,7 +58,7 @@ class AvailableBusesScreen extends StatelessWidget {
             String searchFrom = fromLocation.toLowerCase();
             String searchTo = toLocation.toLowerCase();
 
-            // කොහොම හරි වචනේ තිබ්බොත් Match වෙනවා (e.g. 'hapugala' matches 'Galle to Hapugala')
+            // කොහොම හරි වචනේ තිබ්බොත් Match වෙනවා
             return dbFrom.contains(searchFrom) && dbTo.contains(searchTo);
           }).toList();
 
@@ -81,7 +81,10 @@ class AvailableBusesScreen extends StatelessWidget {
               var data = schedule.data() as Map<String, dynamic>;
 
               String busId = data['busId'] ?? '';
-              String busNo = data['routeFrom'] ?? 'Bus'; // Displaying route start instead of bus ID if not avail
+              
+              // 🔥 වෙනස් කළ තැන: routeFrom වෙනුවට busNo එක ගන්නවා
+              String busNo = data['busNo'] ?? 'Unknown Bus'; 
+              
               String time = data['departureTime'] ?? '--:--';
               double price = double.tryParse(data['price'].toString()) ?? 0.0;
 
@@ -131,6 +134,17 @@ class AvailableBusesScreen extends StatelessWidget {
                           Text("${data['routeFrom']} to ${data['routeTo']}", style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w500)),
                         ],
                       ),
+                      
+                      // 🔥 වෙනස් කළ තැන: Bus Number එකත් මෙතන පෙන්වනවා
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(Icons.directions_bus, color: Colors.blue[300], size: 16),
+                          const SizedBox(width: 10),
+                          Text(busNo, style: TextStyle(color: Colors.blue[800], fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+
                       const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
@@ -147,7 +161,7 @@ class AvailableBusesScreen extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (context) => SelectSeatScreen(
                                   busId: busId,
-                                  busName: "Scheduled Bus", // Or fetch actual bus name if saved in schedule
+                                  busName: busNo, // 🔥 වෙනස් කළ තැන: "Scheduled Bus" වෙනුවට නියම නම පාස් කරනවා
                                   price: price,
                                   selectedDate: selectedDate, 
                                 ),
