@@ -59,20 +59,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
             child: Column(
               children: [
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.directions_bus, size: 80, color: Colors.white),
-                        const SizedBox(height: 10),
-                        const Text("RideWave", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-                      ],
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset('assets/images/logo.png', width: 80, height: 80),
+                          const SizedBox(height: 10),
+                          const Text("RideWave", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                        ],
+                      ),
                     ),
                   ),
                 ),
                 Expanded(
-                  flex: 7,
+                  flex: 6,
                   child: Container(
                     padding: const EdgeInsets.all(30),
                     decoration: const BoxDecoration(

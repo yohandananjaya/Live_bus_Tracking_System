@@ -63,13 +63,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 Expanded(
                   flex: 3,
                   child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.directions_bus, size: 80, color: Colors.white),
-                        const SizedBox(height: 10),
-                        const Text('RideWave', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white)),
-                      ],
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset('assets/images/logo.png', width: 80, height: 80),
+                          const SizedBox(height: 10),
+                          const Text('RideWave', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white)),
+                        ],
+                      ),
                     ),
                   ),
                 ),

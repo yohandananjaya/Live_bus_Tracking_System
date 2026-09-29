@@ -146,21 +146,27 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.directions_bus_filled_rounded, color: Colors.white, size: 40),
-                          const SizedBox(width: 10),
-                          const Text(
-                            "RideWave", 
-                            style: TextStyle(
-                              color: Colors.white, 
-                              fontWeight: FontWeight.w900, 
-                              fontSize: 36, 
-                              letterSpacing: 1.2,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Image.asset('assets/images/logo.png', width: 40, height: 40),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                "RideWave", 
+                                style: TextStyle(
+                                  color: Colors.white, 
+                                  fontWeight: FontWeight.w900, 
+                                  fontSize: 28, 
+                                  letterSpacing: 1.2,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 10),
                       // 🔥 RIGHT: Profile Icon (Clickable)
                       GestureDetector(
                         onTap: () {
