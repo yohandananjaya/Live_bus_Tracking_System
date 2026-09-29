@@ -5,7 +5,7 @@ const SignUp = () => {
   const [username, setUsername]=useState('')
   const [email, setEmail]=useState('')
   const [password, setpassword] = useState('')
-
+  const [confirmPassword, setConfirmPassword]=useState("")
   const handleChange = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
@@ -32,7 +32,7 @@ const SignUp = () => {
               type="text"
               autoComplete="name"
               required
-              value={form.name}
+              value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
           </label>
@@ -45,7 +45,7 @@ const SignUp = () => {
               type="email"
               autoComplete="email"
               required
-              value={form.email}
+              value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </label>
@@ -58,7 +58,7 @@ const SignUp = () => {
               type="password"
               autoComplete="new-password"
               required
-              value={form.password}
+              value={password}
               onChange={(e) => setpassword(e.target.value)}
             />
           </label>
@@ -71,7 +71,7 @@ const SignUp = () => {
               type="password"
               autoComplete="new-password"
               required
-              value={form.confirmPassword}
+              value={confirmPassword}
               onChange={(event) => handleChange('confirmPassword', event.target.value)}
             />
           </label>
