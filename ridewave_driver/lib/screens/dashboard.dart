@@ -242,12 +242,11 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryBlue = Colors.blue[800]!; 
-    
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: primaryBlue,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: Row(
@@ -255,7 +254,7 @@ class _DashboardState extends State<Dashboard> {
           children: [
             const Icon(Icons.directions_bus_filled_rounded, color: Colors.white, size: 32),
             const SizedBox(width: 10),
-            const Text("RideWave", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28, letterSpacing: 1.2, color: Colors.white)),
+            const Text("RideWave Driver", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 26, letterSpacing: 1.2, color: Colors.white)),
           ],
         ),
         centerTitle: true,
@@ -268,11 +267,12 @@ class _DashboardState extends State<Dashboard> {
                 isLive = snapshot.data!['status'] == 'Live';
               }
               return IconButton(
-                icon: const Icon(Icons.logout, color: Colors.white),
+                icon: const Icon(Icons.logout, color: Colors.white, size: 28),
                 onPressed: () => _handleLogout(isLive),
               );
             }
-          )
+          ),
+          const SizedBox(width: 10),
         ],
       ),
       body: StreamBuilder<DocumentSnapshot>(
@@ -289,106 +289,141 @@ class _DashboardState extends State<Dashboard> {
           String routeFrom = data['routeFrom'] != null && data['routeFrom'].toString().isNotEmpty ? data['routeFrom'] : "Not Set";
           String routeTo = data['routeTo'] != null && data['routeTo'].toString().isNotEmpty ? data['routeTo'] : "Not Set";
 
-          return Column(
+          return Stack(
             children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
-                decoration: BoxDecoration(
-                  color: primaryBlue, 
-                  borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-                  boxShadow: [BoxShadow(color: primaryBlue.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))],
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.white.withOpacity(0.2))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(busNo, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-                                const SizedBox(height: 5),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.route, size: 16, color: Colors.white70),
-                                    const SizedBox(width: 5),
-                                    Expanded(child: Text("$routeFrom - $routeTo", style: const TextStyle(fontSize: 16, color: Colors.white70), overflow: TextOverflow.ellipsis)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                            decoration: BoxDecoration(color: isLive ? Colors.green : Colors.redAccent, borderRadius: BorderRadius.circular(20)),
-                            child: Row(children: [const Icon(Icons.circle, size: 10, color: Colors.white), const SizedBox(width: 8), Text(isLive ? "ONLINE" : "OFFLINE", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12))]),
-                          )
-                        ],
-                      ),
+              // --- 1. Top Header with Image Background ---
+              Positioned(
+                top: 0, left: 0, right: 0,
+                height: MediaQuery.of(context).size.height * 0.45,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(image: AssetImage('assets/bus_red.jpg'), fit: BoxFit.cover),
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.black.withOpacity(0.7), Colors.black.withOpacity(0.3)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      )
                     ),
-                    const SizedBox(height: 20),
-                    Row(
+                    padding: const EdgeInsets.only(top: 110, left: 20, right: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _statCard("Total Revenue", "Rs. $revenue", Icons.attach_money, Colors.white)),
-                        const SizedBox(width: 15),
-                        Expanded(child: _statCard("Ticket Price", "Rs. $price", Icons.confirmation_number, Colors.white)),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(busNo, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.5)),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                              decoration: BoxDecoration(color: isLive ? Colors.green : Colors.redAccent, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withOpacity(0.5))),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.circle, size: 10, color: Colors.white), 
+                                  const SizedBox(width: 8), 
+                                  Text(isLive ? "ONLINE" : "OFFLINE", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12))
+                                ]
+                              ),
+                            )
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(Icons.route, size: 18, color: Colors.white70),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text("$routeFrom - $routeTo", style: const TextStyle(fontSize: 18, color: Colors.white70, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+                          ],
+                        ),
+                        const SizedBox(height: 25),
+                        Row(
+                          children: [
+                            Expanded(child: _statCard("Total Revenue", "Rs. $revenue", Icons.account_balance_wallet_rounded, Colors.white)),
+                            const SizedBox(width: 15),
+                            Expanded(child: _statCard("Ticket Price", "Rs. $price", Icons.confirmation_number, Colors.white)),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
 
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 15,
-                    mainAxisSpacing: 15,
-                    childAspectRatio: 1.1, 
+              // --- 2. Overlapping White Container ---
+              Positioned(
+                top: MediaQuery.of(context).size.height * 0.38,
+                left: 0, right: 0, bottom: 0,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(35), topRight: Radius.circular(35)),
+                  ),
+                  child: Column(
                     children: [
-                      _actionCard("Live Map", Icons.map_rounded, Colors.blue[700]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => DriverMapScreen(busId: widget.busId)))),
-                      _actionCard("Bookings", Icons.confirmation_number_rounded, Colors.indigo[400]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => BookingsScreen(busId: widget.busId)))),
-                      _actionCard("Seat Layout", Icons.grid_view_rounded, Colors.lightBlue[600]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => SeatView(busId: widget.busId)))),
-                      _actionCard("Report Issue", Icons.warning_rounded, Colors.redAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => ReportScreen(busId: widget.busId)))),
-                      _actionCard("Trip History", Icons.history_rounded, Colors.teal[600]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => TripHistoryScreen(busId: widget.busId)))),
-                      _actionCard("Time Table", Icons.schedule_rounded, Colors.purple[400]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => TimeTableScreen(busId: widget.busId)))),
+                      const SizedBox(height: 25),
+                      Center(
+                        child: Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+                      ),
+                      const SizedBox(height: 15),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: GridView.count(
+                            padding: const EdgeInsets.only(top: 10, bottom: 20),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 15,
+                            mainAxisSpacing: 15,
+                            childAspectRatio: 1.1, 
+                            children: [
+                              _actionCard("Live Map", Icons.map_rounded, Colors.blue[700]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => DriverMapScreen(busId: widget.busId)))),
+                              _actionCard("Bookings", Icons.confirmation_number_rounded, Colors.indigo[400]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => BookingsScreen(busId: widget.busId)))),
+                              _actionCard("Seat Layout", Icons.grid_view_rounded, Colors.lightBlue[600]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => SeatView(busId: widget.busId)))),
+                              _actionCard("Report Issue", Icons.warning_rounded, Colors.redAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => ReportScreen(busId: widget.busId)))),
+                              _actionCard("Trip History", Icons.history_rounded, Colors.teal[600]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => TripHistoryScreen(busId: widget.busId)))),
+                              _actionCard("Time Table", Icons.schedule_rounded, Colors.purple[400]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => TimeTableScreen(busId: widget.busId)))),
+                            ],
+                          ),
+                        ),
+                      ),
+                      
+                      // --- 3. Bottom Start/End Journey Button ---
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, -5))]
+                        ),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 60,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : () => _toggleTrip(isLive, revenue),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isLive ? Colors.redAccent : const Color(0xFF00C853),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                              elevation: 8,
+                              shadowColor: (isLive ? Colors.redAccent : const Color(0xFF00C853)).withOpacity(0.5),
+                            ),
+                            child: _isLoading 
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(isLive ? Icons.stop_circle_outlined : Icons.play_circle_filled_rounded, color: Colors.white, size: 28),
+                                    const SizedBox(width: 10),
+                                    Text(isLive ? "END JOURNEY" : "START JOURNEY", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1)),
+                                  ],
+                                ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: const BoxDecoration(color: Colors.white),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 60,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : () => _toggleTrip(isLive, revenue),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isLive ? Colors.redAccent : const Color(0xFF00C853),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      elevation: 5,
-                    ),
-                    child: _isLoading 
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(isLive ? Icons.stop_circle_outlined : Icons.play_circle_filled_rounded, color: Colors.white, size: 28),
-                            const SizedBox(width: 10),
-                            Text(isLive ? "END JOURNEY" : "START JOURNEY", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1)),
-                          ],
-                        ),
-                  ),
-                ),
-              ),
+              )
             ],
           );
         },
@@ -398,13 +433,24 @@ class _DashboardState extends State<Dashboard> {
 
   Widget _statCard(String title, String value, IconData icon, Color textColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.3))),
+      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15), 
+        borderRadius: BorderRadius.circular(15), 
+        border: Border.all(color: Colors.white.withOpacity(0.3)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start, 
         children: [
-          Text(title, style: TextStyle(color: textColor.withOpacity(0.9), fontSize: 12)), 
-          const SizedBox(height: 5), 
+          Row(
+            children: [
+              Icon(icon, color: Colors.white70, size: 16),
+              const SizedBox(width: 5),
+              Text(title, style: TextStyle(color: textColor.withOpacity(0.9), fontSize: 12, fontWeight: FontWeight.w500)),
+            ],
+          ), 
+          const SizedBox(height: 8), 
           Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor))
         ]
       ),
@@ -415,13 +461,25 @@ class _DashboardState extends State<Dashboard> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.blueGrey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))]),
+        decoration: BoxDecoration(
+          color: Colors.white, 
+          borderRadius: BorderRadius.circular(20), 
+          border: Border.all(color: Colors.grey.shade100, width: 2),
+          boxShadow: [BoxShadow(color: color.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 8))]
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center, 
           children: [
-            Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle), child: Icon(icon, size: 28, color: color)), 
-            const SizedBox(height: 10), 
-            Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey[800]))
+            Container(
+              padding: const EdgeInsets.all(15), 
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1), 
+                shape: BoxShape.circle,
+              ), 
+              child: Icon(icon, size: 32, color: color)
+            ), 
+            const SizedBox(height: 12), 
+            Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.grey[800]))
           ]
         ),
       ),

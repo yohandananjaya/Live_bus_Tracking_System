@@ -15,138 +15,144 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text("Report Issue", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Report Issue", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black87,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      extendBodyBehindAppBar: false,
-      body: Container(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(top: 20, left: 20, right: 20, bottom: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Issue Type", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-            const SizedBox(height: 15),
-            
-            // Issue Type Selection Grid
-            Container(
-              padding: const EdgeInsets.all(15),
+      body: Stack(
+        children: [
+          // Background Image (Top Header)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.of(context).size.height * 0.45,
+            child: Container(
               decoration: BoxDecoration(
                 image: DecorationImage(
                   image: const AssetImage('assets/report_bg.jpg'),
                   fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
+                  colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.55), BlendMode.darken),
                 ),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 1.2,
-                children: [
-                  _buildIssueChip(Icons.access_time, "Bus Delay"),
-                  _buildIssueChip(Icons.location_off, "Wrong Location"),
-                  _buildIssueChip(Icons.warning_amber, "Safety Concern"),
-                  _buildIssueChip(Icons.help_outline, "Other Issue"),
-                ],
               ),
             ),
+          ),
 
-            const SizedBox(height: 25),
-
-            // Bus Info Input
-            const Text("Bus Information", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-            const SizedBox(height: 10),
-            TextField(
-              decoration: InputDecoration(
-                hintText: "Bus Number (e.g., KY-1234)",
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                filled: true,
-                fillColor: Colors.grey[100],
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey[200]!)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Colors.blue, width: 2)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // Description Input
-            const Text("Describe the Issue", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-            const SizedBox(height: 10),
-            TextField(
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: "Please provide details about the issue...",
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                filled: true,
-                fillColor: Colors.grey[100],
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey[200]!)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Colors.blue, width: 2)),
-                contentPadding: const EdgeInsets.all(20),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // Add Photo (Optional)
-            const Text("Add Photo (Optional)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-            const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid, width: 2), // Solid but thicker to feel like a dropzone
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
-                    child: Icon(Icons.cloud_upload_outlined, color: Colors.blue[400], size: 30)
+          SafeArea(
+            bottom: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Text
+                const Padding(
+                  padding: EdgeInsets.all(25.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Need Help?", style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 8),
+                      Text("Tell us what went wrong, and we'll fix it.", style: TextStyle(color: Colors.white70, fontSize: 16)),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  Text("Tap to upload a photo", style: TextStyle(color: Colors.grey[600], fontSize: 14, fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // Submit Button
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // Submit Logic goes here
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Report Submitted Successfully!")),
-                  );
-                  Navigator.pop(context); // Go back home
-                },
-                icon: const Icon(Icons.send_rounded, color: Colors.white, size: 22),
-                label: const Text("Submit Report", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[700],
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 5,
-                  shadowColor: Colors.blue.withOpacity(0.4),
                 ),
-              ),
+                
+                // Form Container
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.only(top: 30, left: 25, right: 25, bottom: 20),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(topLeft: Radius.circular(35), topRight: Radius.circular(35)),
+                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Issue Type", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
+                          const SizedBox(height: 15),
+                          
+                          // Issue Type Grid
+                          GridView.count(
+                            padding: EdgeInsets.zero,
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 15,
+                            mainAxisSpacing: 15,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            childAspectRatio: 2.5, // Sleek, wide button look
+                            children: [
+                              _buildIssueChip(Icons.access_time, "Bus Delay"),
+                              _buildIssueChip(Icons.location_off, "Wrong Location"),
+                              _buildIssueChip(Icons.warning_amber, "Safety Concern"),
+                              _buildIssueChip(Icons.help_outline, "Other Issue"),
+                            ],
+                          ),
+
+                          const SizedBox(height: 30),
+
+                          const Text("Bus Information", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
+                          const SizedBox(height: 10),
+                          _buildTextField("Bus Number (e.g., KY-1234)", Icons.directions_bus_outlined, maxLines: 1),
+
+                          const SizedBox(height: 25),
+
+                          const Text("Describe the Issue", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
+                          const SizedBox(height: 10),
+                          _buildTextField("Please provide details about the issue...", Icons.description_outlined, maxLines: 4),
+
+
+                          const SizedBox(height: 35),
+
+                          // Submit Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 55,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Report Submitted Successfully!")));
+                                Navigator.pop(context);
+                              },
+                              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 22),
+                              label: const Text("Submit Report", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue[700],
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                elevation: 5,
+                                shadowColor: Colors.blue.withOpacity(0.4),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildTextField(String hint, IconData icon, {int maxLines = 1}) {
+    return TextField(
+      maxLines: maxLines,
+      style: const TextStyle(color: Colors.black87),
+      decoration: InputDecoration(
+        prefixIcon: maxLines == 1 ? Icon(icon, color: Colors.grey[500]) : null,
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[400]),
+        filled: true,
+        fillColor: Colors.grey[100],
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey[200]!)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.blue[700]!, width: 2)),
+        contentPadding: const EdgeInsets.all(20),
       ),
     );
   }
@@ -154,31 +160,20 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   Widget _buildIssueChip(IconData icon, String label) {
     bool isSelected = selectedIssue == label;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedIssue = label;
-        });
-      },
+      onTap: () => setState(() => selectedIssue = label),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blue[50]!.withOpacity(0.95) : Colors.white.withOpacity(0.85),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? Colors.blue : Colors.grey[200]!,
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected ? [] : [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
-          ]
+          color: isSelected ? Colors.blue[700] : Colors.grey[100],
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: isSelected ? [BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
         ),
-        child: Column(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? Colors.blue : Colors.grey[600], size: 28),
-            const SizedBox(height: 10),
-            Text(label, textAlign: TextAlign.center, style: TextStyle(color: isSelected ? Colors.blue[800] : Colors.black87, fontWeight: FontWeight.w600, fontSize: 13)),
+            Icon(icon, color: isSelected ? Colors.white : Colors.grey[700], size: 20),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: FontWeight.w600, fontSize: 13)),
           ],
         ),
       ),

@@ -1,22 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase.js';
-
-const quickAlerts = [
-  { type: 'SOS', bus: 'BUS-022', text: 'Passenger collapse reported near seat 14.', time: '2m ago', severity: 'Critical' },
-  { type: 'Report', bus: 'BUS-031', text: 'Driver skipped stop at Kadawatha.', time: '6m ago', severity: 'High' },
-  { type: 'Report', bus: 'BUS-046', text: 'Route delay due to accident ahead.', time: '11m ago', severity: 'Medium' },
-];
-
-const todayBookings = [
-  { id: 'BK-1024', amount: 420 },
-  { id: 'BK-1025', amount: 180 },
-  { id: 'BK-1026', amount: 420 },
-  { id: 'BK-1027', amount: 280 },
-];
 
 const statusToMarkerClass = {
   Active: 'bus-marker-green',
+  Live: 'bus-marker-green',
   Idle: 'bus-marker-orange',
   Delayed: 'bus-marker-orange',
   Offline: 'bus-marker-red',
@@ -24,6 +12,7 @@ const statusToMarkerClass = {
 
 const statusToChipClass = {
   Active: 'chip-green',
+  Live: 'chip-green',
   Idle: 'chip-amber',
   Delayed: 'chip-amber',
   Offline: 'chip-red',
@@ -71,6 +60,12 @@ const Dashboard = () => {
   const [selectedBus, setSelectedBus] = useState(null);
   const [mapError, setMapError] = useState('');
 
+  // අලුත් Real-time States
+  const [todayRevenue, setTodayRevenue] = useState(0);
+  const [todayBookingsCount, setTodayBookingsCount] = useState(0);
+  const [recentAlerts, setRecentAlerts] = useState([]);
+
+  // 1. Fetch Buses
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'buses'), (snapshot) => {
       const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -79,26 +74,46 @@ const Dashboard = () => {
     return () => unsub();
   }, []);
 
-  const activeBuses = useMemo(
-    () => buses.filter((bus) => (bus.status || 'Idle') === 'Active'),
-    [buses]
-  );
-  const delayedTrips = useMemo(
-    () => buses.filter((bus) => (bus.status || 'Idle') === 'Delayed').length,
-    [buses]
-  );
-  const totalRevenue = useMemo(
-    () => todayBookings.reduce((sum, booking) => sum + booking.amount, 0),
-    []
-  );
+  // 2. Fetch Today's Revenue and Bookings
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split('T')[0]; 
+    const qBookings = query(collection(db, 'bookings'), where('travelDate', '==', todayStr));
+    
+    const unsubBookings = onSnapshot(qBookings, (snapshot) => {
+      let rev = 0;
+      let count = 0;
+      snapshot.forEach(doc => {
+        if (doc.data().status === 'confirmed' || doc.data().status === 'completed') {
+          rev += (Number(doc.data().totalPrice) || 0);
+          count++;
+        }
+      });
+      setTodayRevenue(rev);
+      setTodayBookingsCount(count);
+    });
+
+    const qAlerts = query(collection(db, 'admin_reports'), where('status', '==', 'pending'));
+    const unsubAlerts = onSnapshot(qAlerts, (snapshot) => {
+      const alertsData = snapshot.docs.map(doc => doc.data());
+      setRecentAlerts(alertsData);
+    });
+
+    return () => {
+      unsubBookings();
+      unsubAlerts();
+    };
+  }, []);
+
+  const activeBuses = useMemo(() => buses.filter((bus) => (bus.status === 'Active' || bus.status === 'Live')), [buses]);
 
   const stats = [
     { label: 'Live Buses', value: String(activeBuses.length), delta: 'GPS active now' },
-    { label: 'Total Revenue (Today)', value: `LKR ${totalRevenue}`, delta: `${todayBookings.length} bookings` },
-    { label: 'Total Bookings (Today)', value: String(todayBookings.length), delta: 'All routes' },
-    { label: 'Quick Alerts', value: String(quickAlerts.length), delta: `${delayedTrips} delays` },
+    { label: 'Total Revenue (Today)', value: `LKR ${todayRevenue.toLocaleString()}`, delta: 'Live Updates' },
+    { label: 'Total Bookings (Today)', value: String(todayBookingsCount), delta: 'All routes' },
+    { label: 'Pending Alerts', value: String(recentAlerts.length), delta: 'Needs Attention' },
   ];
 
+  // Map Initialization
   useEffect(() => {
     let active = true;
 
@@ -197,12 +212,9 @@ const Dashboard = () => {
 
           <form className="map-search" onSubmit={handleSearch}>
             <div className="map-search-input">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M10 4a6 6 0 1 0 3.9 10.56l4.27 4.27 1.41-1.41-4.27-4.27A6 6 0 0 0 10 4Zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z" />
-              </svg>
               <input
                 type="text"
-                placeholder="Search bus number (e.g. BUS-022)"
+                placeholder="Search bus number (e.g. ND-4532)"
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
               />
@@ -228,16 +240,16 @@ const Dashboard = () => {
           {mapError ? (
             <p className="form-notice error">{mapError}</p>
           ) : (
-            <div className="real-map-canvas" ref={mapElRef} />
+            <div className="real-map-canvas" ref={mapElRef} style={{ height: '300px', marginTop: '15px' }} />
           )}
 
-          <div className="live-map-legend">
-            <span><i className="legend-dot good" /> Active</span>
-            <span><i className="legend-dot warn" /> Delayed</span>
-            <span><i className="legend-dot bad" /> Offline</span>
+          <div className="live-map-legend" style={{ marginTop: '10px' }}>
+            <span><i className="legend-dot good" /> Live</span>
+            <span><i className="legend-dot warn" /> Idle</span>
           </div>
         </article>
 
+<<<<<<< Updated upstream
 
       <section className="panel">
         <div className="panel-head">
@@ -270,6 +282,27 @@ const Dashboard = () => {
             </tbody>
           </table>
         </div>
+=======
+        <article className="panel">
+          <div className="panel-head">
+            <h2>Pending Reports</h2>
+            <span className="chip chip-red">Action Required</span>
+          </div>
+          <div className="message-list">
+            {recentAlerts.length > 0 ? (
+              recentAlerts.map((alert, idx) => (
+                <div key={idx} className="message-item">
+                  <strong>Bus: {alert.busId}</strong>
+                  <p>{alert.issue}</p>
+                  <small>Status: Pending</small>
+                </div>
+              ))
+            ) : (
+              <p style={{ color: 'gray' }}>No pending alerts right now.</p>
+            )}
+          </div>
+        </article>
+>>>>>>> Stashed changes
       </section>
     </div>
   );

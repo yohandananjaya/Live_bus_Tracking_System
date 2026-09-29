@@ -102,57 +102,76 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 වෙනස්කම 2: Location එක තාම හොයාගෙන නැත්නම් Loading Screen එක පෙන්වනවා.
-    // Colombo පෙන්වන්නේ නෑ.
     if (_currentLocation == null) {
       return Scaffold(
+        extendBodyBehindAppBar: true,
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: const Text("Live Route"), 
-          backgroundColor: Colors.blue[800], 
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.transparent, 
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.blueAccent),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text("Live Route", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
           centerTitle: true,
         ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(color: Colors.blue),
-              const SizedBox(height: 20),
-              Text("Acquiring GPS Signal...", style: TextStyle(color: Colors.grey[600], fontSize: 16)),
-              const SizedBox(height: 10),
-              Text("Please wait outside for better signal", style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-            ],
-          ),
+        body: Stack(
+          children: [
+            Positioned(
+              top: 0, left: 0, right: 0, bottom: 0,
+              child: Opacity(
+                opacity: 0.1,
+                child: Image.asset('assets/home_bg.jpg', fit: BoxFit.cover),
+              ),
+            ),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: Colors.blueAccent),
+                  const SizedBox(height: 20),
+                  Text("Acquiring GPS Signal...", style: TextStyle(color: Colors.blue[900], fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  Text("Please wait outside for better signal", style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                ],
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    // Location හම්බුනාට පස්සේ Map එක පෙන්වනවා
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.black.withOpacity(0.4),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Column(
           children: [
-            const Text("Live Tracking", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const Text("Live Tracking", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
             Text("Bus ID: ${widget.busId}", style: const TextStyle(fontSize: 12, color: Colors.white70)),
           ],
         ),
-        backgroundColor: Colors.blue[800], // New Theme Color
-        foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 15),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: _isLiveTracking ? Colors.green : Colors.red,
-              borderRadius: BorderRadius.circular(20)
+              color: _isLiveTracking ? Colors.green : Colors.redAccent,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.5))
             ),
             child: Row(
               children: [
                 const Icon(Icons.circle, size: 10, color: Colors.white),
                 const SizedBox(width: 5),
-                Text(_isLiveTracking ? "ONLINE" : "OFFLINE", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                Text(_isLiveTracking ? "ONLINE" : "OFFLINE", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
               ],
             ),
           )

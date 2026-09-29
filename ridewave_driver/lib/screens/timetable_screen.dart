@@ -147,133 +147,197 @@ class _TimeTableScreenState extends State<TimeTableScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text("Weekly Schedule"), 
-        backgroundColor: Colors.blue[800], 
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text("Weekly Schedule", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.blue[800],
+        backgroundColor: Colors.redAccent,
         onPressed: () => _addOrEditTimeSlot(context),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text("Add Trip", style: TextStyle(color: Colors.white)),
+        label: const Text("ADD TRIP", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1)),
+        elevation: 5,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Container(
-            color: Colors.white,
-            height: 60,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _weekDays.length,
-              itemBuilder: (context, index) {
-                String day = _weekDays[index];
-                bool isSelected = _selectedDay == day;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedDay = day;
-                    });
-                  },
-                  child: Container(
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: isSelected ? Colors.blue[800]! : Colors.transparent, 
-                          width: 3
-                        )
-                      )
-                    ),
-                    child: Text(
-                      day, 
-                      style: TextStyle(
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? Colors.blue[800] : Colors.grey[600],
-                        fontSize: 16
-                      )
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('schedules')
-                  .where('busId', isEqualTo: widget.busId)
-                  .where('dayOfWeek', isEqualTo: _selectedDay)
-                  .orderBy('departureTime')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.event_busy, size: 60, color: Colors.grey[300]),
-                        const SizedBox(height: 10),
-                        Text("No trips scheduled for $_selectedDay.", style: TextStyle(color: Colors.grey[500], fontSize: 16)),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(15),
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    var doc = snapshot.data!.docs[index];
-                    var data = doc.data() as Map<String, dynamic>;
-
-                    return Card(
-                      elevation: 2,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(15),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(10)),
-                              child: Text(data['departureTime'] ?? "--:--", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[900], fontSize: 16)),
-                            ),
-                            const SizedBox(width: 15),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text("${data['routeFrom']} to ${data['routeTo']}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                  const SizedBox(height: 5),
-                                  Text("Ticket: Rs. ${data['price']}", style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                                ],
+          // --- 1. Background Image Header ---
+          Positioned(
+            top: 0, left: 0, right: 0,
+            height: MediaQuery.of(context).size.height * 0.35,
+            child: Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(image: AssetImage('assets/bus_nine_arches.jpg'), fit: BoxFit.cover),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.black.withOpacity(0.8), Colors.black.withOpacity(0.3)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  )
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    // Horizontal Day Selector inside header
+                    SizedBox(
+                      height: 50,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _weekDays.length,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        itemBuilder: (context, index) {
+                          String day = _weekDays[index];
+                          bool isSelected = _selectedDay == day;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedDay = day;
+                              });
+                            },
+                            child: Container(
+                              alignment: Alignment.center,
+                              margin: const EdgeInsets.symmetric(horizontal: 5),
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              decoration: BoxDecoration(
+                                color: isSelected ? Colors.redAccent : Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(25),
+                                border: Border.all(color: isSelected ? Colors.redAccent : Colors.white.withOpacity(0.5)),
+                              ),
+                              child: Text(
+                                day, 
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  color: Colors.white,
+                                  fontSize: 14
+                                )
                               ),
                             ),
-                            PopupMenuButton<String>(
-                              onSelected: (value) {
-                                if (value == 'edit') {
-                                  _addOrEditTimeSlot(context, docId: doc.id, start: data['routeFrom'], end: data['routeTo'], sTime: data['departureTime']);
-                                } else if (value == 'delete') {
-                                  _deleteSlot(doc.id);
-                                }
-                              },
-                              itemBuilder: (BuildContext context) => [
-                                const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, color: Colors.blue, size: 20), SizedBox(width: 10), Text("Edit")])),
-                                const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 10), Text("Delete")])),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 35),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // --- 2. Sliding White Container for Content ---
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.3,
+            left: 0, right: 0, bottom: 0,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(35), topRight: Radius.circular(35)),
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 15),
+                  Center(child: Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)))),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('schedules')
+                          .where('busId', isEqualTo: widget.busId)
+                          .where('dayOfWeek', isEqualTo: _selectedDay)
+                          .orderBy('departureTime')
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.event_busy, size: 60, color: Colors.grey[300]),
+                                const SizedBox(height: 10),
+                                Text("No trips scheduled for $_selectedDay.", style: TextStyle(color: Colors.grey[500], fontSize: 16)),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+                          );
+                        }
+
+                        return ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          itemCount: snapshot.data!.docs.length,
+                          itemBuilder: (context, index) {
+                            var doc = snapshot.data!.docs[index];
+                            var data = doc.data() as Map<String, dynamic>;
+
+                            return Card(
+                              elevation: 2,
+                              margin: const EdgeInsets.only(bottom: 15),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(15),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12)),
+                                      child: Column(
+                                        children: [
+                                          const Icon(Icons.access_time_filled, color: Colors.blueAccent, size: 20),
+                                          const SizedBox(height: 5),
+                                          Text(data['departureTime'] ?? "--:--", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[900], fontSize: 14)),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 15),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text("${data['routeFrom']} to ${data['routeTo']}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                          const SizedBox(height: 5),
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.confirmation_number, size: 14, color: Colors.green),
+                                              const SizedBox(width: 5),
+                                              Text("Ticket: Rs. ${data['price']}", style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    PopupMenuButton<String>(
+                                      onSelected: (value) {
+                                        if (value == 'edit') {
+                                          _addOrEditTimeSlot(context, docId: doc.id, start: data['routeFrom'], end: data['routeTo'], sTime: data['departureTime']);
+                                        } else if (value == 'delete') {
+                                          _deleteSlot(doc.id);
+                                        }
+                                      },
+                                      itemBuilder: (BuildContext context) => [
+                                        const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, color: Colors.blue, size: 20), SizedBox(width: 10), Text("Edit")])),
+                                        const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 10), Text("Delete")])),
+                                      ],
+                                      icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
