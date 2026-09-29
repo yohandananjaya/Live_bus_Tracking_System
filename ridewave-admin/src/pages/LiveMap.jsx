@@ -4,6 +4,7 @@ import { db } from '../firebase.js';
 
 const statusToMarkerClass = {
   Active: 'bus-marker-green',
+  Live: 'bus-marker-green', // Added Live from Driver App
   Delayed: 'bus-marker-orange',
   Offline: 'bus-marker-red',
   Idle: 'bus-marker-orange',
@@ -133,8 +134,8 @@ const LiveMap = () => {
     const seen = new Set();
 
     buses.forEach((bus) => {
-      const lat = bus.location?.lat ?? bus.location?.latitude ?? bus.coords?.[0];
-      const lng = bus.location?.lng ?? bus.location?.longitude ?? bus.coords?.[1];
+      const lat = bus.latitude ?? bus.location?.lat ?? bus.location?.latitude ?? bus.coords?.[0];
+      const lng = bus.longitude ?? bus.location?.lng ?? bus.location?.longitude ?? bus.coords?.[1];
       if (typeof lat !== 'number' || typeof lng !== 'number') return;
 
       const icon = L.divIcon({
@@ -150,7 +151,7 @@ const LiveMap = () => {
       } else {
         const marker = L.marker([lat, lng], { icon }).addTo(mapRef.current);
         marker.bindPopup(
-          `<strong>${bus.busNumber ?? bus.id}</strong><br/>${bus.route?.from ?? '-'} -> ${bus.route?.to ?? '-'}<br/>Status: ${bus.status ?? 'Active'}`
+          `<strong>${bus.busNo ?? bus.busNumber ?? bus.id}</strong><br/>${bus.routeFrom ?? bus.route?.from ?? '-'} -> ${bus.routeTo ?? bus.route?.to ?? '-'}<br/>Status: ${bus.status ?? 'Active'}`
         );
         markerMap[bus.id] = marker;
       }
@@ -215,11 +216,11 @@ const LiveMap = () => {
               <strong>{selectedBus.busNo ?? selectedBus.id}</strong>
               <p>
                 Status:{' '}
-                <span className={`chip ${statusToChipClass[selectedBus.status] || 'chip-blue'}`}>
-                  {selectedBus.status ?? 'Idle'}
+                <span className={`chip ${statusToMarkerClass[selectedBus.status] || 'chip-blue'}`}>
+                  {selectedBus.status === 'Live' ? 'Active' : (selectedBus.status ?? 'Idle')}
                 </span>
               </p>
-              <p>Route: {selectedBus.routeFrom ?? '-'} → {selectedBus.routeTo ?? '-'}</p>
+              <p>Route: {selectedBus.routeFrom ?? selectedBus.route?.from ?? '-'} → {selectedBus.routeTo ?? selectedBus.route?.to ?? '-'}</p>
             </div>
           )}
 

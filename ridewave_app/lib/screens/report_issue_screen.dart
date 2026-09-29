@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   const ReportIssueScreen({super.key});
@@ -10,6 +11,8 @@ class ReportIssueScreen extends StatefulWidget {
 class _ReportIssueScreenState extends State<ReportIssueScreen> {
   // තෝරාගත් ප්‍රශ්න වර්ගය (Issue Type)
   String selectedIssue = "Bus Delay";
+  final TextEditingController busController = TextEditingController();
+  final TextEditingController issueController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -97,13 +100,13 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
                           const Text("Bus Information", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
                           const SizedBox(height: 10),
-                          _buildTextField("Bus Number (e.g., KY-1234)", Icons.directions_bus_outlined, maxLines: 1),
+                          _buildTextField("Bus Number (e.g., KY-1234)", Icons.directions_bus_outlined, busController, maxLines: 1),
 
                           const SizedBox(height: 25),
 
                           const Text("Describe the Issue", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
                           const SizedBox(height: 10),
-                          _buildTextField("Please provide details about the issue...", Icons.description_outlined, maxLines: 4),
+                          _buildTextField("Please provide details about the issue...", Icons.description_outlined, issueController, maxLines: 4),
 
 
                           const SizedBox(height: 35),
@@ -113,9 +116,25 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                             width: double.infinity,
                             height: 55,
                             child: ElevatedButton.icon(
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Report Submitted Successfully!")));
-                                Navigator.pop(context);
+                              onPressed: () async {
+                                if (busController.text.trim().isEmpty || issueController.text.trim().isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all fields!")));
+                                  return;
+                                }
+
+                                try {
+                                  await FirebaseFirestore.instance.collection('admin_reports').add({
+                                    'issue': "$selectedIssue: ${issueController.text.trim()}",
+                                    'bus_id': busController.text.trim(),
+                                    'timestamp': FieldValue.serverTimestamp(),
+                                    'status': 'pending',
+                                    'source': 'passenger_app'
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Report Submitted Successfully!")));
+                                  Navigator.pop(context);
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to submit: $e")));
+                                }
                               },
                               icon: const Icon(Icons.send_rounded, color: Colors.white, size: 22),
                               label: const Text("Submit Report", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
@@ -140,8 +159,9 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     );
   }
 
-  Widget _buildTextField(String hint, IconData icon, {int maxLines = 1}) {
+  Widget _buildTextField(String hint, IconData icon, TextEditingController controller, {int maxLines = 1}) {
     return TextField(
+      controller: controller,
       maxLines: maxLines,
       style: const TextStyle(color: Colors.black87),
       decoration: InputDecoration(

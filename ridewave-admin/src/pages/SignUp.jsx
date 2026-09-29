@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const SignUp = () => {
   const [username, setUsername]=useState('')
@@ -10,8 +10,33 @@ const SignUp = () => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const handleSubmit = (event) => {
+  const navigate = useNavigate();
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    if (password !== confirmPassword) {
+      alert("Passwords do not match!");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message);
+      }
+
+      alert("Account created successfully!");
+      navigate("/signin");
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Registration failed");
+    }
   };
 
   return (
@@ -72,7 +97,7 @@ const SignUp = () => {
               autoComplete="new-password"
               required
               value={confirmPassword}
-              onChange={(event) => handleChange('confirmPassword', event.target.value)}
+              onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </label>
 

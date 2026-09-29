@@ -249,8 +249,6 @@ const Dashboard = () => {
           </div>
         </article>
 
-<<<<<<< Updated upstream
-
       <section className="panel">
         <div className="panel-head">
           <h2>Active Bus Details</h2>
@@ -282,28 +280,27 @@ const Dashboard = () => {
             </tbody>
           </table>
         </div>
-=======
-        <article className="panel">
-          <div className="panel-head">
-            <h2>Pending Reports</h2>
-            <span className="chip chip-red">Action Required</span>
-          </div>
-          <div className="message-list">
-            {recentAlerts.length > 0 ? (
-              recentAlerts.map((alert, idx) => (
-                <div key={idx} className="message-item">
-                  <strong>Bus: {alert.busId}</strong>
-                  <p>{alert.issue}</p>
-                  <small>Status: Pending</small>
-                </div>
-              ))
-            ) : (
-              <p style={{ color: 'gray' }}>No pending alerts right now.</p>
-            )}
-          </div>
-        </article>
->>>>>>> Stashed changes
       </section>
+
+      <article className="panel">
+        <div className="panel-head">
+          <h2>Pending Reports</h2>
+          <span className="chip chip-red">Action Required</span>
+        </div>
+        <div className="message-list">
+          {recentAlerts.length > 0 ? (
+            recentAlerts.map((alert, idx) => (
+              <div key={idx} className="message-item">
+                <strong>Bus: {alert.busId}</strong>
+                <p>{alert.issue}</p>
+                <small>Status: Pending</small>
+              </div>
+            ))
+          ) : (
+            <p style={{ color: 'gray' }}>No pending alerts right now.</p>
+          )}
+        </div>
+      </article>
     </div>
   );
 };

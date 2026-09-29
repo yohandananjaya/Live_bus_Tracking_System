@@ -6,6 +6,7 @@ const Support = () => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState('');
+  const [activeTab, setActiveTab] = useState('driver'); // 'driver' or 'passenger'
 
   // Firebase එකෙන් Real-time Reports ගන්නවා
   useEffect(() => {
@@ -58,17 +59,34 @@ const Support = () => {
           <h2>System Reports & SOS</h2>
           <p className="panel-copy">Review live complaints and issues from drivers and passengers.</p>
         </div>
-        <span className="chip chip-red">{alerts.length} Pending</span>
+        <span className="chip chip-red">{alerts.length} Pending Total</span>
+      </div>
+
+      <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
+        <button 
+          onClick={() => setActiveTab('driver')}
+          style={{ padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold', background: 'none', border: 'none', color: activeTab === 'driver' ? '#0f4c81' : '#888', borderBottom: activeTab === 'driver' ? '3px solid #0f4c81' : 'none' }}
+        >
+          Driver Reports
+        </button>
+        <button 
+          onClick={() => setActiveTab('passenger')}
+          style={{ padding: '10px 20px', cursor: 'pointer', fontWeight: 'bold', background: 'none', border: 'none', color: activeTab === 'passenger' ? '#0f4c81' : '#888', borderBottom: activeTab === 'passenger' ? '3px solid #0f4c81' : 'none' }}
+        >
+          Passenger Reports
+        </button>
       </div>
 
       {notice && <p className="form-notice success">{notice}</p>}
 
       <div className="alerts-list">
-        {alerts.map((alert) => (
+        {alerts
+          .filter((alert) => activeTab === 'passenger' ? alert.source === 'passenger_app' : alert.source !== 'passenger_app')
+          .map((alert) => (
           <article key={alert.id} className="alert-ticket">
             <div className="alert-ticket-head">
               <div>
-                <strong>Bus ID: {alert.busId || 'Unknown'}</strong>
+                <strong>Bus/User Info: {alert.busId || alert.bus_id || 'Unknown'}</strong>
                 <p>Reported Issue</p>
               </div>
               <div className="alert-meta">
@@ -78,7 +96,7 @@ const Support = () => {
             </div>
 
             <p className="alert-passenger">
-              <strong>Source:</strong> Driver App / System
+              <strong>Source:</strong> {alert.source === 'passenger_app' ? 'Passenger App' : 'Driver App'}
             </p>
             <p className="alert-message" style={{ fontSize: '15px', color: '#d32f2f', fontWeight: 'bold' }}>
               {alert.issue}
@@ -93,9 +111,9 @@ const Support = () => {
         ))}
       </div>
 
-      {alerts.length === 0 && (
+      {alerts.filter((alert) => activeTab === 'passenger' ? alert.source === 'passenger_app' : alert.source !== 'passenger_app').length === 0 && (
         <div className="empty-alerts">
-          <p>Great! All alerts are resolved right now.</p>
+          <p>Great! No pending reports in this category.</p>
         </div>
       )}
     </section>
