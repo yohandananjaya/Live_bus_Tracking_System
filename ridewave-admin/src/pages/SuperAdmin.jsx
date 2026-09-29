@@ -59,7 +59,7 @@ useEffect(()=>{
     try{
       const token = localStorage.getItem("token")
       const response = await fetch(
-        "http://localhost/api/auth/admins",
+        "http://localhost:5000/api/auth/admins",
         {
           headers:{
             Authorization: `Bearer ${token}`
@@ -76,24 +76,6 @@ useEffect(()=>{
   fetchAdmins();
 },[])
 
-  const filteredBuses = useMemo(() => {
-    const search = query.trim().toLowerCase();
-
-    return buses
-      .filter((bus) => statusFilter === 'All' || (bus.status || 'Idle') === statusFilter)
-      .filter((bus) => {
-        if (!search) return true;
-        const haystack = `${bus.busNo} ${bus.busType} ${bus.ownerName} ${bus.ownerNIC} ${bus.driverContact}`
-          .toLowerCase();
-        return haystack.includes(search);
-      })
-      .sort((a, b) => {
-        if (sortBy === 'status') {
-          return (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
-        }
-        return String(a[sortBy] || '').localeCompare(String(b[sortBy] || ''));
-      });
-  }, [buses, query, sortBy, statusFilter]);
 
 
 const handleChange=(key, value)=>

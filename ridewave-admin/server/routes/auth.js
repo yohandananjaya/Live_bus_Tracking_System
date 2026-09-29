@@ -186,7 +186,7 @@ router.post("/create-admin",
     }
 )
 
-router.gert("/admins",
+router.get("/admins",
     authMiddleware,
     async(req, res)=>{
         try{
