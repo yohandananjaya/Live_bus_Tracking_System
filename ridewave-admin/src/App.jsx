@@ -23,11 +23,14 @@ const NotFoundPage = () => (
 );
 
 const ProtectedRoutes = () => {
-  const { isAuthenticated } = useAuth();
+  
   const location = useLocation();
+  const token = localStorage.getItem("token")
 
-  if (!isAuthenticated) {
-    return <Navigate to="/signin" replace state={{ from: location.pathname }} />;
+  
+
+  if(!token){
+    return(<Navigate to="/signin" replace state={{from:location.pathname}}></Navigate>)
   }
 
   return <Outlet />;

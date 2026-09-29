@@ -7,14 +7,63 @@ const SignIn = () => {
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { signIn, signInWithGoogle } = useAuth();
+  //const { signIn, signInWithGoogle } = useAuth();
   const destination = location.state?.from || '/';
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    signIn(email, password);
-    navigate(destination, { replace: true });
-  };
+ const handleSubmit = async (e) => {
+e.preventDefault();
+
+try {
+const response = await fetch(
+"http://localhost:5000/api/auth/login",
+{
+method: "POST",
+headers: {
+"Content-Type": "application/json",
+},
+body: JSON.stringify({
+email,
+password,
+}),
+}
+);
+
+const data = await response.json();
+console.log(data)
+localStorage.getItem("token")
+if (!response.ok) {
+throw new Error(data.message);
+}
+
+localStorage.setItem("token", data.token);
+localStorage.setItem("role", data.role);
+
+localStorage.setItem(
+"user",
+JSON.stringify(data.user)
+);
+
+
+console.log("Sending Request...")
+console.log("Token", data.token)
+console.log("Role",data.role)
+
+if (data.role === "superadmin") {
+
+console.log("BEFORE NAVIGATION");
+navigate("/super");
+console.log("AFTER NAVIGATION");
+} else if (data.role === "admin") {
+navigate("/");
+} else {
+
+}
+
+} catch (error) {
+console.error(error);
+alert(error.message || "Login failed");
+}
+};
 
   const handleGoogleSignIn = () => {
     signInWithGoogle();
@@ -76,15 +125,6 @@ const SignIn = () => {
           <span>or</span>
         </div>
 
-        <button type="button" className="auth-google-btn" onClick={handleGoogleSignIn}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              fill="#EA4335"
-              d="M12 10.2v3.9h5.4c-.2 1.2-1.4 3.6-5.4 3.6-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.9 3 14.6 2 12 2 6.9 2 2.8 6.1 2.8 11.2S6.9 20.4 12 20.4c6.9 0 9.1-4.8 9.1-7.3 0-.5 0-.8-.1-1.1H12Z"
-            />
-          </svg>
-          <span>Sign in with Google</span>
-        </button>
 
         <p className="auth-footnote">
           Need an account?{' '}
