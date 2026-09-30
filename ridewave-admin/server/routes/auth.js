@@ -144,10 +144,11 @@ router.post("/create-admin",
     authMiddleware,
     async(req,res)=>{
         console.log("req.user",req.user)
-        if(
-            
-            req.user.role !== "superadmin"
-        ){
+        const hasPermission = req.user.role === "superadmin" || 
+                              req.user.permissions?.includes("all") || 
+                              req.user.permissions?.includes("manage_users");
+
+        if(!hasPermission){
             return res.status(403)
             .json({
                 message:"Access denied"
