@@ -56,7 +56,6 @@ const MainLayout = () => {
           <div className="topbar-meta">
             <span>{today}</span>
             <span className="user-pill">{user?.email ?? 'admin@ridewave.lk'}</span>
-            <button type="button" className="ghost-btn-1" onClick={handleSignOut}>Sign Out</button>
           </div>
         </header>
 

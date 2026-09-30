@@ -7,6 +7,7 @@ import LiveMap from "./pages/LiveMap.jsx";
 import Buses from "./pages/Buses.jsx";
 import Financials from "./pages/Financials_updated.jsx";
 import Support from "./pages/Support.jsx";
+import UserManagement from "./pages/UserManagement.jsx";
 
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
@@ -56,7 +57,7 @@ function App() {
             <Route path="fleet" element={<Buses />} />
             <Route path="financials" element={<Financials />} />
             <Route path="support" element={<Support />} />
-            <Route path="super" element={<SuperAdmin/>}/>
+            <Route path="staff" element={<UserManagement />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

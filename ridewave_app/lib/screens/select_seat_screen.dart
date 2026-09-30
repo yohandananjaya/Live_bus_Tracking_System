@@ -116,103 +116,247 @@ class _SelectSeatScreenState extends State<SelectSeatScreen> {
     );
   }
 
+  Widget _buildLegendItem(Color color, String text, bool hasBorder) {
+    return Row(
+      children: [
+        Container(
+          width: 18, height: 18,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+            border: hasBorder ? Border.all(color: Colors.grey[400]!) : null,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(text, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black54, fontSize: 13)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Select Seats (${widget.selectedDate})"), backgroundColor: Colors.blue[800], foregroundColor: Colors.white),
-      body: Column(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text("Select Seats", style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.white,
+      ),
+      body: Stack(
         children: [
-          // 1. Seat Grid
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('bookings')
-                  .where('busId', isEqualTo: widget.busId)
-                  .where('travelDate', isEqualTo: widget.selectedDate)
-                  .where('status', whereIn: ['confirmed', 'upcoming', 'pending']) // Pending ඒවත් පෙන්නනවා (අනිත් අයට ගන්න බෑ)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
-                List<String> alreadyBooked = [];
-                for (var doc in snapshot.data!.docs) {
-                  List seats = doc['seats'] ?? [];
-                  for (var seat in seats) {
-                    alreadyBooked.add(seat.toString());
-                  }
-                }
-
-                return GridView.builder(
-                  padding: const EdgeInsets.all(20),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, crossAxisSpacing: 10, mainAxisSpacing: 10),
-                  itemCount: 32, 
-                  itemBuilder: (context, index) {
-                    if (index % 4 == 2 && index < 28) return const SizedBox();
-
-                    String seatName = "${String.fromCharCode(65 + (index / 4).floor())}${(index % 4) + 1}";
-                    
-                    bool isTaken = alreadyBooked.contains(seatName);
-                    bool isSelected = _selectedSeats.contains(seatName);
-
-                    return GestureDetector(
-                      onTap: (isTaken || _isProcessing) ? null : () {
-                        setState(() {
-                          if (isSelected) {
-                            _selectedSeats.remove(seatName);
-                          } else {
-                            _selectedSeats.add(seatName);
-                          }
-                        });
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isTaken 
-                              ? Colors.red[300] 
-                              : isSelected 
-                                  ? Colors.green 
-                                  : Colors.grey[200], 
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: isSelected ? Colors.green : Colors.grey),
-                        ),
-                        child: Center(
-                          child: isTaken 
-                            ? const Icon(Icons.close, color: Colors.white) 
-                            : Text(seatName, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.black)),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+          // 1. Background Header Image
+          Positioned(
+            top: 0, left: 0, right: 0,
+            height: MediaQuery.of(context).size.height * 0.35,
+            child: Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(image: AssetImage('assets/home_bg.jpg'), fit: BoxFit.cover),
+              ),
+              child: Container(color: Colors.black.withOpacity(0.6)), // Dark overlay
             ),
           ),
 
-          // 2. Bottom Bar (Payment Button)
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, -5))]
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // 2. Header Texts
+          Positioned(
+            top: 100, left: 30, right: 30,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                Text(widget.busName, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                const SizedBox(height: 5),
+                Row(
                   children: [
-                    const Text("Total Price", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    Text("Rs. ${_selectedSeats.length * widget.price}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue)),
+                    const Icon(Icons.calendar_month_rounded, color: Colors.white70, size: 18),
+                    const SizedBox(width: 5),
+                    Text(widget.selectedDate, style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500)),
                   ],
                 ),
-                ElevatedButton(
-                  onPressed: (_selectedSeats.isEmpty || _isProcessing) ? null : _proceedToPayment,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[800], padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                  child: _isProcessing 
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text("Pay Now", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                )
               ],
+            ),
+          ),
+
+          // 3. Overlapping White Container
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.25,
+            left: 0, right: 0, bottom: 0,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(35), topRight: Radius.circular(35)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 25),
+                  
+                  // Legend
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildLegendItem(Colors.white, "Available", true),
+                      const SizedBox(width: 15),
+                      _buildLegendItem(Colors.green, "Selected", false),
+                      const SizedBox(width: 15),
+                      _buildLegendItem(Colors.red[400]!, "Booked", false),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Seat Grid
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('bookings')
+                          .where('busId', isEqualTo: widget.busId)
+                          .where('travelDate', isEqualTo: widget.selectedDate)
+                          .where('status', whereIn: ['confirmed', 'upcoming', 'pending'])
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+                        List<String> alreadyBooked = [];
+                        for (var doc in snapshot.data!.docs) {
+                          List seats = doc['seats'] ?? [];
+                          for (var seat in seats) {
+                            alreadyBooked.add(seat.toString());
+                          }
+                        }
+
+                        final List<List<int?>> seatLayout = [
+                          [1, 2, null, 3, 4, 5],
+                          [6, 7, null, 8, 9, 10],
+                          [11, 12, null, 13, 14, 15],
+                          [16, 17, null, 18, 19, 20],
+                          [21, 22, null, 23, 24, 25],
+                          [26, 27, null, 28, 29, 30],
+                          [31, 32, null, 33, 34, 35],
+                          [36, 37, null, 38, 39, 40],
+                          [41, 42, null, 43, 44, 45],
+                          [null, null, null, 46, 47, 48],
+                          [49, 50, 51, 52, 53, 54],
+                        ];
+
+                        return ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                          children: [
+                            // Steering Wheel
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 15, bottom: 20, top: 10),
+                                  child: Icon(Icons.sports_motorsports_outlined, size: 38, color: Colors.grey[400]), // Looks like a wheel
+                                )
+                              ],
+                            ),
+                            // Seat Rows
+                            ...seatLayout.map((row) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 15),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: row.map((seatNum) {
+                                    if (seatNum == null) {
+                                      return const SizedBox(width: 40); // Aisle
+                                    }
+
+                                    String seatName = seatNum.toString().padLeft(2, '0');
+                                    bool isTaken = alreadyBooked.contains(seatName);
+                                    bool isSelected = _selectedSeats.contains(seatName);
+
+                                    return GestureDetector(
+                                      onTap: (isTaken || _isProcessing) ? null : () {
+                                        setState(() {
+                                          if (isSelected) {
+                                            _selectedSeats.remove(seatName);
+                                          } else {
+                                            _selectedSeats.add(seatName);
+                                          }
+                                        });
+                                      },
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 200),
+                                        width: 42,
+                                        height: 42,
+                                        decoration: BoxDecoration(
+                                          color: isTaken 
+                                              ? Colors.red[400] 
+                                              : isSelected 
+                                                  ? Colors.green 
+                                                  : Colors.white,
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: isTaken ? Colors.red : isSelected ? Colors.green : Colors.grey[300]!, 
+                                            width: 1.5
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: (isSelected ? Colors.green : Colors.grey).withOpacity(0.3), 
+                                              blurRadius: 6, 
+                                              offset: const Offset(0, 3)
+                                            )
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            seatName, 
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold, 
+                                              fontSize: 15, 
+                                              color: isTaken || isSelected ? Colors.white : Colors.black87
+                                            )
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 20), // Bottom padding
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+
+                  // 4. Bottom Payment Bar
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, -5))]
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text("Total Price", style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 2),
+                            Text("Rs. ${_selectedSeats.length * widget.price}", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blueAccent)),
+                          ],
+                        ),
+                        ElevatedButton(
+                          onPressed: (_selectedSeats.isEmpty || _isProcessing) ? null : _proceedToPayment,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue[800], 
+                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15), 
+                            elevation: 5,
+                            shadowColor: Colors.blue.withOpacity(0.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
+                          ),
+                          child: _isProcessing 
+                              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                              : const Text("Pay Now", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                        )
+                      ],
+                    ),
+                  )
+                ],
+              ),
             ),
           )
         ],

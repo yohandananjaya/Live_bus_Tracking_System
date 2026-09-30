@@ -38,6 +38,10 @@ const userSchema= new mongoose.Schema({
     active: {
         type: Boolean,
         default: true
+    },
+    permissions: {
+        type: [String],
+        default: ["all"] // Old users get all permissions by default
     }
 },
     {

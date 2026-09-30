@@ -18,28 +18,94 @@ class BookingsScreen extends StatelessWidget {
     return DefaultTabController(
       length: 3, 
       child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
-          title: const Text("My Bookings", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          bottom: const TabBar(
-            labelColor: Colors.blue,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.blue,
-            tabs: [
-              Tab(text: "Search"), 
-              Tab(text: "Upcoming"),
-              Tab(text: "History"),
-            ],
-          ),
-        ),
-        body: TabBarView(
+        backgroundColor: Colors.white,
+        body: Stack(
           children: [
-            const _AdvanceBookingTab(), 
-            _buildBookingList(context, user.uid, ['upcoming', 'pending'], isHistoryTab: false),
-            _buildBookingList(context, user.uid, ['confirmed', 'completed', 'refund_requested', 'refunded'], isHistoryTab: true),
+            // Background Image Header
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: MediaQuery.of(context).size.height * 0.35,
+              child: Container(
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/bookings_bg.jpg'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: Container(
+                  color: Colors.black.withOpacity(0.6), // Dark overlay
+                  padding: const EdgeInsets.only(top: 60, left: 20, right: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "My Bookings",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text(
+                        "Manage your trips easily",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const Spacer(),
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 25.0),
+                        child: TabBar(
+                          labelColor: Colors.white,
+                          unselectedLabelColor: Colors.white54,
+                          indicatorColor: Colors.white,
+                          dividerColor: Colors.transparent,
+                          tabs: [
+                            Tab(text: "Search"), 
+                            Tab(text: "Upcoming"),
+                            Tab(text: "History"),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            
+            // Main Content Area with rounded corners
+            Positioned(
+              top: MediaQuery.of(context).size.height * 0.35 - 20,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
+                  child: TabBarView(
+                    children: [
+                      const _AdvanceBookingTab(), 
+                      _buildBookingList(context, user.uid, ['upcoming', 'pending'], isHistoryTab: false),
+                      _buildBookingList(context, user.uid, ['confirmed', 'completed', 'refund_requested', 'refunded'], isHistoryTab: true),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -125,7 +191,7 @@ class BookingsScreen extends StatelessWidget {
             
             Expanded(
               child: ListView.builder(
-                padding: EdgeInsets.only(left: 20, right: 20, bottom: 20, top: isHistoryTab ? 0 : 20),
+                padding: EdgeInsets.only(left: 20, right: 20, bottom: 20, top: isHistoryTab ? 10 : 30),
                 itemCount: snapshot.data!.docs.length,
                 itemBuilder: (context, index) {
                   var doc = snapshot.data!.docs[index];
@@ -349,7 +415,7 @@ class _AdvanceBookingTabState extends State<_AdvanceBookingTab> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20, top: 30),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
