@@ -135,6 +135,8 @@ router.post("/create-admin",
             role
         }= req.body;
 
+
+
         const existingUser = await User.findOne({
             $or: [
                 {email},
@@ -164,12 +166,21 @@ router.post("/create-admin",
             active:true
         });
 
+        const sendCredentials = require("../utils/sendEmail");
+        await sendCredentials({
+            email,
+            firstname,
+            username,
+            password,
+            role
+        })
+
         res.status(201).json({
-            message: "User created",
+            message: "User created successfully",
             user
         })
 
-
+      // res.json(user);
         } catch (error) {
             console.error(error);
 
@@ -182,7 +193,7 @@ router.post("/create-admin",
 
 
 
-        res.json(user);
+        
     }
 )
 
@@ -200,6 +211,56 @@ router.get("/admins",
             console.error(error);
             res.status(500).json({
                 message:"Server Error"
+            })
+        }
+    }
+)
+
+router.put(
+    "/admins/:id",
+    authMiddleware,
+    async(req,res)=>{
+        try{
+            const {phone, password}=req.body;
+
+            const updates={
+                phone
+            }
+            if (password){
+                updates.password=await bcrypt.hash(password,10)
+            }
+            const user = await User.findByIdAndUpdate(
+                req.params.id,
+                updates,
+                {new:true}
+            );
+            res.json(user);
+        }catch(error){
+            console.error(error);
+            res.status(500).json({
+                message:"Server Error"
+            })
+        }
+    }
+)
+
+router.delete(
+    "/admins/:id",
+    authMiddleware,
+    async(req,res)=>{
+        try{
+            await User.findByIdAndDelete(
+                req.params.id
+            );
+
+            res.json({
+                message:"User deleted successfully"
+            })
+        }catch(error){
+            console.error(error);
+
+            res.status(500).json({
+                message: "Server Error"
             })
         }
     }

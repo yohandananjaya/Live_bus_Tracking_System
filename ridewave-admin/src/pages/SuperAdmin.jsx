@@ -53,8 +53,8 @@ const [reportOpen, setReportOpen] = useState(false);
 const [form, setForm]=useState(initialForm);
 const [saving, setSaving]=useState(false)
 const [admins,setAdmins]=useState([])
+const [editingId,setEditingId]=useState(null)
 
-useEffect(()=>{
   const fetchAdmins = async () =>{
     try{
       const token = localStorage.getItem("token")
@@ -73,6 +73,9 @@ useEffect(()=>{
       console.error(error)
     }
   }
+
+
+useEffect(()=>{
   fetchAdmins();
 },[])
 
@@ -84,7 +87,31 @@ const handleChange=(key, value)=>
 };
 
 const handleCreate = async(event)=>{
-  event.preventDefault();
+
+if(editingId){
+
+  const token = localStorage.getItem("token")
+
+  await fetch(
+    `http://localhost:5000/api/auth/admins/${editingId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type":"application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body:JSON.stringify({
+        password:form.password,
+        phone:form.phone
+
+
+      })
+    }
+  )
+fetchAdmins()
+setEditingId(null)
+}else{
+    event.preventDefault();
   setError("");
   setNotice("");
 
@@ -134,15 +161,53 @@ console.log(data.token)
     }
 
     setNotice(`${form.role} created successfully`)
-    fetchAdmins();
+    fetchAdmins()
     setForm(initialForm)
     setReportOpen(false)
   }
   catch(error){
+    fetchAdmins()
     setError(error.message || "Failed to create user")
   }
+}
 
 
+}
+
+const handleEdit = (admin)=>{
+  setForm({
+    email:admin.email,
+    firstname:admin.firstname,
+    username:admin.username,
+    role:admin.role,
+    phone:admin.phone,
+    password:""
+  });
+
+  setEditingId(admin._id);
+  setReportOpen(true);
+}
+
+const handleDelete = async (id) =>{
+  const confirmDelete = window.confirm("This user going to be deleted?")
+  if(!confirmDelete) return;
+
+  try {
+    const token = localStorage.getItem("token");
+    await fetch(
+      `http://localhost:5000/api/auth/admins/${id}`,
+      {
+        method:"DELETE",
+        headers:{
+        Authorization: `Bearer ${token}`
+      }
+    }
+    );
+    fetchAdmins();
+  }catch(error){
+
+    console.error(error)
+  }
 }
 
 return(
@@ -162,24 +227,28 @@ return(
           <table>
             <thead>
               <tr>
-                <th>UID</th>
+                <th>Username</th>
                 <th>Email</th>
                 <th>Name</th>
                 <th>Role</th>
                 <th>Phone</th>
                 <th>Active</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {admins.map((admin)=>(
                 <tr key={admin._id}>
-                  <td>{admin._id}</td>
+                  <td>{admin.username}</td>
                   <td>{admin.email}</td>
                   <td>{admin.firstname} {admin.lastname}</td>
                   <td>{admin.role}</td>
                   <td>{admin.phone}</td>
                   <td>{admin.active?"Active":"Inactive"}</td>
-                  <td></td>
+                  <td>
+                    <button onClick={()=>handleEdit(admin)}>Edit</button>
+                    <button onClick={()=>handleDelete(admin._id)}>Delete</button>
+                    </td>
                 </tr>
               ))}
             </tbody>
