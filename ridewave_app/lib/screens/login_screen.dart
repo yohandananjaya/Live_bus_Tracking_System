@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'main_layout.dart';
 import 'signup_screen.dart';
 
@@ -33,6 +35,169 @@ class _LoginScreenState extends State<LoginScreen> {
             .showSnackBar(SnackBar(content: Text("Login Failed: $e")));
       }
     } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  final _phoneController = TextEditingController();
+  final _otpController = TextEditingController();
+  String? _verificationId;
+
+  // Phone Verification logic for new Google Users
+  Future<void> _startPhoneVerification(Function onVerified) async {
+    String phone = _phoneController.text.trim();
+    if (phone.isEmpty) return;
+    if (!phone.startsWith('+')) phone = '+94$phone';
+
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: phone,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          onVerified(credential);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Verification Failed: ${e.message}")));
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          setState(() {
+            _isLoading = false;
+            _verificationId = verificationId;
+          });
+          _showOtpDialog(onVerified);
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
+
+  void _showOtpDialog(Function onVerified) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Enter OTP"),
+          content: TextField(
+            controller: _otpController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: "OTP Code"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                String otp = _otpController.text.trim();
+                if (otp.isNotEmpty && _verificationId != null) {
+                  PhoneAuthCredential credential = PhoneAuthProvider.credential(
+                    verificationId: _verificationId!,
+                    smsCode: otp,
+                  );
+                  onVerified(credential);
+                }
+              },
+              child: const Text("Verify"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showPhoneInputDialog(Function(String) onSubmit) {
+    TextEditingController tempPhoneCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("Enter Phone Number"),
+        content: TextField(
+          controller: tempPhoneCtrl,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(labelText: "Phone Number (e.g. 771234567)", prefixText: "+94 "),
+        ),
+        actions: [
+          TextButton(onPressed: () {
+            FirebaseAuth.instance.signOut();
+            GoogleSignIn().signOut();
+            Navigator.pop(context);
+          }, child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () {
+              if (tempPhoneCtrl.text.isNotEmpty) {
+                Navigator.pop(context);
+                onSubmit("+94${tempPhoneCtrl.text.trim()}");
+              }
+            },
+            child: const Text("Continue"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return; // User canceled the sign-in flow
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      
+      // Check if user already exists in Firestore
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).get();
+      
+      if (!userDoc.exists) {
+        setState(() => _isLoading = false);
+        // NEW USER via Login page: Needs phone verification
+        _showPhoneInputDialog((phone) {
+           _phoneController.text = phone;
+           _startPhoneVerification((PhoneAuthCredential phoneCredential) async {
+              setState(() => _isLoading = true);
+              try {
+                await userCredential.user!.linkWithCredential(phoneCredential);
+              } catch(e) {}
+              
+              await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+                'name': userCredential.user!.displayName ?? 'User',
+                'email': userCredential.user!.email ?? '',
+                'phone': _phoneController.text.trim(),
+                'createdAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+
+              if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainLayout()));
+           });
+        });
+      } else {
+        // Existing user, just login
+        if (mounted) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainLayout()));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Google Sign-In Failed: $e")));
+      }
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -108,6 +273,28 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: _isLoading
                                   ? const CircularProgressIndicator(color: Colors.white)
                                   : const Text('Sign In', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                          const SizedBox(height: 15),
+                          const Row(
+                            children: [
+                              Expanded(child: Divider(color: Colors.grey)),
+                              Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Text("OR", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+                              Expanded(child: Divider(color: Colors.grey)),
+                            ],
+                          ),
+                          const SizedBox(height: 15),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: OutlinedButton.icon(
+                              onPressed: _isLoading ? null : _signInWithGoogle,
+                              icon: Image.network('https://developers.google.com/identity/images/g-logo.png', width: 24, height: 24),
+                              label: const Text('Sign in with Google', style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.grey[300]!),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 20),

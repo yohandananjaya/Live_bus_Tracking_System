@@ -161,7 +161,7 @@ class AvailableBusesScreen extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (context) => SelectSeatScreen(
                                   busId: busId,
-                                  busName: busNo, // 🔥 වෙනස් කළ තැන: "Scheduled Bus" වෙනුවට නියම නම පාස් කරනවා
+                                  busNo: busNo, // 🔥 වෙනස් කළ තැන: "Scheduled Bus" වෙනුවට නියම නම පාස් කරනවා
                                   price: price,
                                   selectedDate: selectedDate, 
                                 ),

@@ -4,15 +4,15 @@ import { db } from '../firebase.js';
 
 const initialDraft = {
   busNo: '',
-  busChasisNo:'',
+  busChasisNo: '',
   busType: '',
   totalSeats: '',
   ownerName: '',
   ownerNIC: '',
   ownerContact: '',
-  accessCode: '',
   ownerAddress: '',
-  
+  driverContact: '',
+  accessCode: '',
 };
 
 const statusOrder = { Active: 0, Idle: 1, Delayed: 2, Offline: 3 };
@@ -82,7 +82,7 @@ const Buses = () => {
     setFormError('');
     setNotice('');
 
-    if (!draft.busNo || !draft.busType || !draft.totalSeats || !draft.ownerName || !draft.ownerNIC || !draft.driverContact) {
+    if (!draft.busNo || !draft.busType || !draft.totalSeats || !draft.ownerName || !draft.ownerNIC || !draft.ownerContact) {
       setFormError('Please fill all required fields.');
       return;
     }
@@ -105,6 +105,8 @@ const Buses = () => {
       ownerName: draft.ownerName.trim(),
       ownerNIC: draft.ownerNIC.trim(),
       ownerContact: draft.ownerContact.trim(),
+      ownerAddress: draft.ownerAddress.trim(),
+      driverContact: draft.driverContact.trim(),
       accessCode: draft.accessCode || generateAccessCode(),
       routeFrom: editingBus?.routeFrom ?? '',
       routeTo: editingBus?.routeTo ?? '',
@@ -145,11 +147,14 @@ const Buses = () => {
     setEditingBus(bus);
     setDraft({
       busNo: bus.busNo || '',
+      busChasisNo: bus.busChasisNo || '',
       busType: bus.busType || '',
       totalSeats: bus.totalSeats ?? '',
       ownerName: bus.ownerName || '',
       ownerNIC: bus.ownerNIC || '',
       ownerContact: bus.ownerContact || '',
+      ownerAddress: bus.ownerAddress || '',
+      driverContact: bus.driverContact || '',
       accessCode: bus.accessCode || '',
     });
     setNotice('');
@@ -279,19 +284,17 @@ const Buses = () => {
             <input
               type="text"
               placeholder="67/A, Hapugala, Galle"
-              value={draft.driverContact}
-              onChange={(event) => setDraft((current) => ({ ...current, driverContact: event.target.value }))}
-              required
+              value={draft.ownerAddress}
+              onChange={(event) => setDraft((current) => ({ ...current, ownerAddress: event.target.value }))}
             />
           </label>
           <label className="form-field">
-            <span>Owner Contact Number</span>
+            <span>Driver Contact Number</span>
             <input
               type="text"
               placeholder="0712345678"
               value={draft.driverContact}
               onChange={(event) => setDraft((current) => ({ ...current, driverContact: event.target.value }))}
-              required
             />
           </label>
           
@@ -371,7 +374,7 @@ const Buses = () => {
                 <td>{bus.totalSeats}</td>
                 <td>{bus.ownerName}</td>
                 <td>{bus.ownerNIC}</td>
-                <td>{bus.driverContact}</td>
+                <td>{bus.ownerContact}</td>
                 <td>
                   <span
                     className={`chip ${

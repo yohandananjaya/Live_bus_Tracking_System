@@ -401,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ElevatedButton(
               onPressed: () {
                  String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-                 Navigator.push(context, MaterialPageRoute(builder: (context) => SelectSeatScreen(busId: busId, busName: busNo, price: price, selectedDate: todayStr)));
+                 Navigator.push(context, MaterialPageRoute(builder: (context) => SelectSeatScreen(busId: busId, busNo: busNo, price: price, selectedDate: todayStr)));
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[800], shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5)),
               child: const Text("Book", style: TextStyle(color: Colors.white, fontSize: 12)),

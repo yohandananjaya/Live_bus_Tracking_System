@@ -38,6 +38,7 @@ const Financials = () => {
           travelDate: doc.data().travelDate || '',
           status: doc.data().status || 'pending',
           timestamp: doc.data().timestamp || null,
+          payoutSettled: doc.data().payoutSettled || false,
         }));
         setBookings(bookingsData);
         setLoading(false);
@@ -85,32 +86,56 @@ const Financials = () => {
     }
   }, []); 
 
-  const calculatePayouts = (bookingsData) => {
+  function calculatePayouts(bookingsData) {
     const payoutMap = {};
-    const COMMISSION_RATE = 0.05; // 5% admin commission
+    const COMMISSION_RATE = 0.25; // 25% admin commission
 
+    // Group by Date AND Bus
     bookingsData.forEach((booking) => {
-      if (!payoutMap[booking.busId]) {
-        payoutMap[booking.busId] = {
+      const travelDateStr = booking.travelDate || 'Unknown Date';
+      const key = `${booking.busId}_${travelDateStr}`;
+
+      if (!payoutMap[key]) {
+        payoutMap[key] = {
           busId: booking.busId,
           busNo: booking.busNo,
+          travelDate: travelDateStr,
           totalCollected: 0,
           commission: 0,
           due: 0,
           status: 'Pending',
+          bookedSeats: new Set(),
+          bookingIds: [],
         };
       }
-      payoutMap[booking.busId].totalCollected += booking.totalPrice;
-      const commissionAmount = booking.totalPrice * COMMISSION_RATE;
-      payoutMap[booking.busId].commission += commissionAmount;
-      payoutMap[booking.busId].due += booking.totalPrice - commissionAmount;
+      
+      if (!booking.payoutSettled) {
+        payoutMap[key].totalCollected += booking.totalPrice;
+        const commissionAmount = booking.totalPrice * COMMISSION_RATE;
+        payoutMap[key].commission += commissionAmount;
+        payoutMap[key].due += booking.totalPrice - commissionAmount;
+        
+        // Add seats to the set
+        booking.seats.forEach(seat => payoutMap[key].bookedSeats.add(seat));
+        payoutMap[key].bookingIds.push(booking.id);
+      }
     });
 
-    const payoutsArray = Object.entries(payoutMap).map(([_, payout], index) => ({
-      id: `PO-${String(index + 1).padStart(4, '0')}`,
-      ...payout,
-    }));
-    setPayouts(payoutsArray);
+    const payoutsArray = Object.entries(payoutMap).map(([_, payout], index) => {
+      // Determine if the trip is finished based on date
+      const isFinished = payout.travelDate !== 'Unknown Date' && new Date(payout.travelDate) < new Date(new Date().setHours(0,0,0,0));
+      return {
+        id: `PO-${String(index + 1).padStart(4, '0')}`,
+        seatsList: Array.from(payout.bookedSeats).join(', '),
+        isFinished,
+        ...payout,
+      };
+    });
+    
+    // Sort so past trips are at the top
+    payoutsArray.sort((a, b) => new Date(a.travelDate) - new Date(b.travelDate));
+    // Filter out payouts that have 0 due (i.e. all bookings are settled)
+    setPayouts(payoutsArray.filter(p => p.due > 0));
   };
 
   const totals = useMemo(() => {
@@ -158,7 +183,11 @@ const Financials = () => {
       const payout = payouts.find((p) => p.id === payoutId);
       if (!payout) return;
 
-      await addDoc(collection(db, 'payouts'), {
+      const batch = writeBatch(db);
+      
+      // Create payout record for driver app
+      const payoutRef = doc(collection(db, 'payouts'));
+      batch.set(payoutRef, {
         busId: payout.busId,
         busNo: payout.busNo,
         amountTransferred: payout.due,
@@ -166,6 +195,14 @@ const Financials = () => {
         status: 'settled',
         type: 'commission_settlement',
       });
+
+      // Mark bookings as settled
+      payout.bookingIds.forEach((bookingId) => {
+        const bookingRef = doc(db, 'bookings', bookingId);
+        batch.update(bookingRef, { payoutSettled: true });
+      });
+
+      await batch.commit();
 
       setNotice(`${payoutId} marked as settled & sent to driver app.`);
       setTimeout(() => setNotice(''), 3000);
@@ -303,9 +340,11 @@ const Financials = () => {
             <table>
               <thead>
                 <tr>
+                  <th>Trip Date</th>
                   <th>Bus No</th>
+                  <th>Seats Booked</th>
                   <th>Total Collected</th>
-                  <th>Commission (5%)</th>
+                  <th>Commission (25%)</th>
                   <th>Due to Driver</th>
                   <th>Action</th>
                 </tr>
@@ -314,19 +353,27 @@ const Financials = () => {
                 {payouts.length > 0 ? (
                   payouts.map((payout) => (
                     <tr key={payout.id}>
+                      <td>{formatDate(payout.travelDate)}</td>
                       <td>{payout.busNo || payout.busId}</td>
+                      <td style={{ maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={payout.seatsList}>
+                        {payout.seatsList || 'None'}
+                      </td>
                       <td>{payout.totalCollected.toLocaleString()}</td>
                       <td>{payout.commission.toLocaleString()}</td>
                       <td className="highlight">{payout.due.toLocaleString()}</td>
                       <td>
-                        <button type="button" className="ghost-btn" onClick={() => handleSettle(payout.id)} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
-                          Settle Funds
-                        </button>
+                        {payout.isFinished ? (
+                          <button type="button" className="action-btn" onClick={() => handleSettle(payout.id)} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
+                            Settle Funds
+                          </button>
+                        ) : (
+                          <span style={{ color: 'orange', fontWeight: 'bold' }}>Trip Not Finished</span>
+                        )}
                       </td>
                     </tr>
                   ))
                 ) : (
-                  <tr><td colSpan="5" className="empty-row">No payouts due right now.</td></tr>
+                  <tr><td colSpan="7" className="empty-row">No payouts due right now.</td></tr>
                 )}
               </tbody>
             </table>

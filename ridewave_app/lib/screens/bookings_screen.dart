@@ -99,8 +99,8 @@ class BookingsScreen extends StatelessWidget {
                   child: TabBarView(
                     children: [
                       const _AdvanceBookingTab(), 
-                      _buildBookingList(context, user.uid, ['upcoming', 'pending'], isHistoryTab: false),
-                      _buildBookingList(context, user.uid, ['confirmed', 'completed', 'refund_requested', 'refunded'], isHistoryTab: true),
+                      _buildBookingList(context, user.uid, isHistoryTab: false),
+                      _buildBookingList(context, user.uid, isHistoryTab: true),
                     ],
                   ),
                 ),
@@ -151,27 +151,61 @@ class BookingsScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildBookingList(BuildContext context, String userId, List<String> statusList, {required bool isHistoryTab}) {
+  Widget _buildBookingList(BuildContext context, String userId, {required bool isHistoryTab}) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('bookings')
           .where('userId', isEqualTo: userId)
-          .where('status', whereIn: statusList) 
+          .where('status', whereIn: ['pending', 'confirmed', 'upcoming', 'completed', 'refund_requested', 'refunded', 'cancelled'])
           .orderBy('bookingDate', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        
+        Widget emptyState = Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.airplane_ticket_outlined, size: 60, color: Colors.grey[300]),
+              const SizedBox(height: 10),
+              Text("No bookings found.", style: TextStyle(color: Colors.grey[500])),
+            ],
+          ),
+        );
+
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.airplane_ticket_outlined, size: 60, color: Colors.grey[300]),
-                const SizedBox(height: 10),
-                Text("No bookings found.", style: TextStyle(color: Colors.grey[500])),
-              ],
-            ),
-          );
+          return emptyState;
+        }
+
+        DateTime today = DateTime.now();
+        DateTime todayOnly = DateTime(today.year, today.month, today.day);
+
+        List<DocumentSnapshot> filteredDocs = snapshot.data!.docs.where((doc) {
+          var data = doc.data() as Map<String, dynamic>;
+          String status = data['status'] ?? 'pending';
+          String tDateStr = data['travelDate'] ?? '';
+          
+          bool isPast = false;
+          if (tDateStr.isNotEmpty) {
+            try {
+              DateTime travelDate = DateFormat('yyyy-MM-dd').parse(tDateStr);
+              if (travelDate.isBefore(todayOnly)) {
+                isPast = true;
+              }
+            } catch (e) {}
+          }
+
+          if (isHistoryTab) {
+            return ['completed', 'refund_requested', 'refunded', 'cancelled'].contains(status) || 
+                   (status == 'confirmed' && isPast);
+          } else {
+            return ['pending', 'upcoming'].contains(status) || 
+                   (status == 'confirmed' && !isPast);
+          }
+        }).toList();
+
+        if (filteredDocs.isEmpty) {
+          return emptyState;
         }
 
         return Column(
@@ -192,9 +226,9 @@ class BookingsScreen extends StatelessWidget {
             Expanded(
               child: ListView.builder(
                 padding: EdgeInsets.only(left: 20, right: 20, bottom: 20, top: isHistoryTab ? 10 : 30),
-                itemCount: snapshot.data!.docs.length,
+                itemCount: filteredDocs.length,
                 itemBuilder: (context, index) {
-                  var doc = snapshot.data!.docs[index];
+                  var doc = filteredDocs[index];
                   var data = doc.data() as Map<String, dynamic>;
 
                   String bookingDocId = doc.id;

@@ -5,14 +5,14 @@ import 'package:payhere_mobilesdk_flutter/payhere_mobilesdk_flutter.dart'; // �
 
 class SelectSeatScreen extends StatefulWidget {
   final String busId;
-  final String busName;
+  final String busNo; // Renamed from busName
   final double price;
   final String selectedDate; // "2026-02-18" වගේ String එකක්
 
   const SelectSeatScreen({
     super.key,
     required this.busId,
-    required this.busName,
+    required this.busNo,
     required this.price,
     required this.selectedDate,
   });
@@ -43,7 +43,7 @@ class _SelectSeatScreenState extends State<SelectSeatScreen> {
       // A. Database එකේ 'pending' (Lock) විදියට Save කරනවා
       DocumentReference docRef = await FirebaseFirestore.instance.collection('bookings').add({
         'busId': widget.busId,
-        'busName': widget.busName,
+        'busNo': widget.busNo, // Changed from busName
         'userId': user.uid,
         'seats': _selectedSeats,
         'totalPrice': totalPrice,
@@ -71,7 +71,7 @@ class _SelectSeatScreenState extends State<SelectSeatScreen> {
       "merchant_secret": "MTY5NDMyODQxODM5NTQyOTk4NzcyMzM5NjYxNjE1OTM5NjY2MDM3", // ඔයාගේ Secret එක
       "notify_url": "https://sandbox.payhere.lk",
       "order_id": bookingId,
-      "items": "RideWave Ticket - ${widget.busName}",
+      "items": "RideWave Ticket - ${widget.busNo}",
       "amount": amount.toString(),
       "currency": "LKR",
       "first_name": user.displayName ?? "Passenger",
@@ -163,7 +163,7 @@ class _SelectSeatScreenState extends State<SelectSeatScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.busName, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                Text(widget.busNo, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
                 const SizedBox(height: 5),
                 Row(
                   children: [

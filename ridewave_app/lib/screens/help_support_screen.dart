@@ -8,103 +8,231 @@ class HelpSupportScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Help & Support", style: TextStyle(fontWeight: FontWeight.bold)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
-        foregroundColor: Colors.black,
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Image
-            Container(
-              height: 250,
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/home_bg.jpg'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.black.withOpacity(0.6), Colors.transparent],
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                  ),
-                ),
-                padding: const EdgeInsets.all(20),
-                alignment: Alignment.bottomLeft,
-                child: const Text(
-                  "Welcome to RideWave",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                "Help & Support",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF0F1A35), // Dark blue PickMe style
                 ),
               ),
             ),
+            const SizedBox(height: 20),
             
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "About RideWave System",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "RideWave is an advanced live bus tracking and management system. We aim to provide real-time updates and seamless travel experiences for passengers, ensuring you never miss a bus again.",
-                    style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.5),
-                  ),
-                  const SizedBox(height: 25),
-
-                  _buildFeatureSection(
-                    title: "Live Tracking & Maps",
-                    description: "Monitor your bus locations in real-time. Our smart mapping system gives you exact locations, moving live on the map.",
-                    imageAsset: "assets/images/logo.png",
-                    icon: Icons.map_outlined,
-                  ),
-                  
-                  const SizedBox(height: 25),
-
-                  _buildFeatureSection(
-                    title: "Smart Notifications",
-                    description: "Get alerts when a bus is arriving, delayed, or if there are emergencies. Stay informed at all times.",
-                    imageAsset: "assets/home_bg.jpg",
-                    icon: Icons.notifications_active_outlined,
-                    isReversed: true,
-                  ),
-
-                  const SizedBox(height: 35),
-
-                  const Text(
-                    "Need More Help?",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 15),
-
-                  _buildContactCard(
-                    icon: Icons.email_outlined,
-                    title: "Email Us",
-                    subtitle: "support@ridewave.lk",
-                    color: Colors.blue,
-                  ),
-                  const SizedBox(height: 10),
-                  _buildContactCard(
-                    icon: Icons.phone_outlined,
-                    title: "Call Hotline",
-                    subtitle: "+94 112 345 678",
-                    color: Colors.green,
-                  ),
-                  const SizedBox(height: 40),
-                ],
+            // Topics Header
+            Container(
+              width: double.infinity,
+              color: Colors.grey[50],
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              child: const Text(
+                "Select a topic",
+                style: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w500),
               ),
+            ),
+            
+            _buildTopicTile(
+              context,
+              icon: Icons.login_outlined,
+              title: "Account & Login Issues",
+              categoryIndex: 0,
+            ),
+            _buildTopicTile(
+              context,
+              icon: Icons.directions_bus_outlined,
+              title: "Live Tracking & Maps",
+              categoryIndex: 1,
+            ),
+            _buildTopicTile(
+              context,
+              icon: Icons.notifications_active_outlined,
+              title: "App Features & Notifications",
+              categoryIndex: 2,
+            ),
+            _buildTopicTile(
+              context,
+              icon: Icons.security_outlined,
+              title: "Safety & Emergency",
+              categoryIndex: 3,
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopicTile(BuildContext context, {required IconData icon, required String title, required int categoryIndex}) {
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+          leading: Icon(icon, color: Colors.black87, size: 28),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => HelpCategoryScreen(categoryData: helpData[categoryIndex])));
+          },
+        ),
+        Divider(height: 1, color: Colors.grey[200], indent: 20, endIndent: 20),
+      ],
+    );
+  }
+}
+
+// Category Screen (e.g., Account & Login Issues)
+class HelpCategoryScreen extends StatelessWidget {
+  final Map<String, dynamic> categoryData;
+  
+  const HelpCategoryScreen({super.key, required this.categoryData});
+
+  @override
+  Widget build(BuildContext context) {
+    List<Map<String, String>> issues = categoryData['issues'];
+    
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                categoryData['title'],
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF0F1A35),
+                ),
+              ),
+            ),
+            const SizedBox(height: 5),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                "Please choose your issue",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            ...issues.map((issue) => _buildIssueTile(
+              context, 
+              issue['question']!, 
+              articleTitle: issue['question']!,
+              articleContent: issue['answer']!
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIssueTile(BuildContext context, String issueTitle, {required String articleTitle, required String articleContent}) {
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          title: Text(issueTitle, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => HelpArticleScreen(title: articleTitle, content: articleContent)));
+          },
+        ),
+        Divider(height: 1, color: Colors.grey[200], indent: 20, endIndent: 20),
+      ],
+    );
+  }
+}
+
+// Article Screen
+class HelpArticleScreen extends StatelessWidget {
+  final String title;
+  final String content;
+
+  const HelpArticleScreen({super.key, required this.title, required this.content});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF0F1A35),
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 25),
+            Text(
+              content,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 50),
+            
+            // Was this helpful section
+            const Center(
+              child: Text(
+                "Was this helpful?",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF0F1A35),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildFeedbackButton(Icons.thumb_up, Colors.green),
+                const SizedBox(width: 20),
+                _buildFeedbackButton(Icons.thumb_down, Colors.redAccent),
+              ],
             ),
           ],
         ),
@@ -112,98 +240,79 @@ class HelpSupportScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureSection({
-    required String title,
-    required String description,
-    required String imageAsset,
-    required IconData icon,
-    bool isReversed = false,
-  }) {
-    final imageWidget = ClipRRect(
-      borderRadius: BorderRadius.circular(15),
-      child: Image.asset(
-        imageAsset,
-        height: 120,
-        width: 120,
-        fit: BoxFit.cover,
-      ),
-    );
-
-    final textWidget = Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: Colors.blue[700], size: 24),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            description,
-            style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.4),
-          ),
-        ],
-      ),
-    );
-
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: isReversed 
-            ? [textWidget, const SizedBox(width: 15), imageWidget]
-            : [imageWidget, const SizedBox(width: 15), textWidget],
-      ),
-    );
-  }
-
-  Widget _buildContactCard({required IconData icon, required String title, required String subtitle, required Color color}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, spreadRadius: 1),
-        ],
-        border: Border.all(color: Colors.grey[100]!),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(subtitle, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-              ],
-            ),
-          ),
-        ],
+  Widget _buildFeedbackButton(IconData icon, Color color) {
+    return InkWell(
+      onTap: () {},
+      borderRadius: BorderRadius.circular(40),
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: color, width: 2),
+        ),
+        child: Icon(icon, color: color, size: 30),
       ),
     );
   }
 }
+
+// Data for Help & Support
+final List<Map<String, dynamic>> helpData = [
+  {
+    "title": "Account & Login Issues",
+    "issues": [
+      {
+        "question": "I don't receive the OTP code to login",
+        "answer": "The OTP confirmation code is sent via SMS to the phone number you registered with.\n\nIf you haven't received it:\n1. Check your cellular network connection.\n2. Ensure the phone number entered is correct without the leading zero (e.g. +94 7X XXX XXXX).\n3. Wait a few seconds and tap on 'Resend Code'.\n\nIf the issue persists, you can try logging in via your Google Account."
+      },
+      {
+        "question": "How do I sign in with my Google Account?",
+        "answer": "To sign in using Google, tap the 'Sign in with Google' button on the Login screen. You will be prompted to choose a Google account linked to your device. If it's your first time, you will also be asked to verify your phone number to complete the registration."
+      },
+      {
+        "question": "I changed my phone number, how do I recover my account?",
+        "answer": "Currently, accounts are strictly linked to your verified phone number for security purposes. If you have completely lost access to your old number, you may need to create a new account using your new number. If you previously linked a Google account, you can still sign in using Google."
+      }
+    ]
+  },
+  {
+    "title": "Live Tracking & Maps",
+    "issues": [
+      {
+        "question": "Why is the bus location not updating?",
+        "answer": "Bus locations are updated in real-time based on the GPS data sent from the driver's app. If a bus location is not updating:\n\n1. The bus might be passing through an area with poor network coverage.\n2. The driver might have temporarily paused the trip or gone offline.\n3. Your device might be experiencing internet connectivity issues. Try refreshing the app or checking your connection."
+      },
+      {
+        "question": "How to search for a specific bus route?",
+        "answer": "You can find specific bus routes by going to the 'Search' or 'Routes' tab. Enter your 'From' and 'To' destinations in the search bar. The app will filter and display all active buses currently traveling on routes that match your criteria."
+      },
+      {
+        "question": "Is the live tracking accurate?",
+        "answer": "Yes, our live tracking system uses GPS coordinates updated every few seconds. However, minor delays of 5-10 seconds might occur depending on network latency. The estimated arrival times are calculated considering current traffic conditions and the bus's speed."
+      }
+    ]
+  },
+  {
+    "title": "App Features & Notifications",
+    "issues": [
+      {
+        "question": "How do I get notifications for bus arrivals?",
+        "answer": "To get notified when a bus is arriving at your stop:\n\n1. Select a bus on the live map.\n2. Tap the 'Remind Me' or 'Set Alert' button.\n3. Choose how many minutes before arrival you want to be notified (e.g. 5 mins, 10 mins).\n\nMake sure you have granted Notification permissions to the RideWave app in your phone's settings."
+      },
+      {
+        "question": "Can I save my favorite routes?",
+        "answer": "Yes! When you view a route, you can tap the 'Heart' icon to save it to your Favorites. You can easily access your favorite routes later from the 'Favorites' section in the bottom navigation bar without having to search for them again."
+      }
+    ]
+  },
+  {
+    "title": "Safety & Emergency",
+    "issues": [
+      {
+        "question": "How to use the Emergency SOS feature?",
+        "answer": "If you feel unsafe or have a medical emergency during your journey:\n\n1. Tap the red 'Emergency' icon located in the bottom navigation bar.\n2. You will be redirected to the Emergency screen.\n3. From there, you can directly call the Police (119), Ambulance (1990), or contact RideWave Support.\n\nYour current live location can also be shared with authorities if necessary."
+      }
+    ]
+  }
+];
+
