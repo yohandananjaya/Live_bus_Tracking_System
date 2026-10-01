@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useState } from 'react';
+import ProfileModal from './ProfileModal.jsx';
 import { 
   LayoutDashboard, 
   BusFront, 
@@ -27,7 +29,8 @@ const Sidebar = ({ onNavigate }) => {
   const userName = userObj?.username || userObj?.email?.split('@')[0] || 'Operator';
   const permissions = userObj?.permissions || [];
   const appVersion = 'v1.1.0';
-
+  const [profileOpen, setProfileOpen]=useState(false)
+  
   const hasPermission = (requiredPerm) => {
     if (!requiredPerm) return true;
     if (userObj?.role === 'superadmin') return true;
@@ -51,7 +54,7 @@ const Sidebar = ({ onNavigate }) => {
           style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
         />
         <div style={{ marginTop: '0.5rem' }}>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', background: 'linear-gradient(90deg, #53acff, #00ff88)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', background: 'linear-gradient(135deg, rgb(0, 255, 38), #2fff24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             RideWave
           </h2>
           <p style={{ color: '#a0aec0', fontSize: '0.85rem' }}>Operation Console</p>
@@ -88,7 +91,7 @@ const Sidebar = ({ onNavigate }) => {
           <span>Sign Out</span>
         </button>
         
-        <div className="user-card simple" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(15, 36, 52, 0.4)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="user-card simple" onClick={()=>setProfileOpen(true)} style={{cursor:"pointer", display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(15, 36, 52, 0.4)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
           <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`} alt="User profile" className="user-card-photo" style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fff' }} />
           <div className="user-card-meta">
             <strong style={{ fontSize: '0.9rem', color: '#e2e8f0' }}>{userName}</strong>
@@ -96,6 +99,9 @@ const Sidebar = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+
+        <ProfileModal open={profileOpen} onClose={()=>setProfileOpen(false)} user={userObj}/>
+
     </div>
   );
 };

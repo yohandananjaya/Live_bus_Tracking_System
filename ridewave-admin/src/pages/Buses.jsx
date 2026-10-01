@@ -334,14 +334,14 @@ const Buses = () => {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="selection">
           <option>All</option>
           <option>Idle</option>
           <option>Active</option>
           <option>Delayed</option>
           <option>Offline</option>
         </select>
-        <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+        <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="selection">
           <option value="busNo">Sort by Bus Number</option>
           <option value="ownerName">Sort by Owner</option>
           <option value="status">Sort by Status</option>

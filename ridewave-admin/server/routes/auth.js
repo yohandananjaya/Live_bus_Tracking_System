@@ -225,7 +225,7 @@ router.post("/create-admin",
 
 
 
-        res.json(user);
+       
     }
 )
 
@@ -273,6 +273,46 @@ router.put(
                 message:"Server Error"
             })
         }
+    }
+)
+
+router.put(
+    "/profile/:id",
+    authMiddleware,
+    async(req,res)=>{
+        const {
+            currentPassword,
+            newPassword,
+            phone
+        }=req.body;
+
+        const user=await User.findById(req.params.id);
+
+        if (!user){
+            return res.status(404).json({
+                message:"User not found"
+            })
+        }
+
+        const validPassword=await bcrypt.compare(currentPassword,user.password);
+
+        if (!validPassword){
+            return res.status(401).json({
+                message:"Current password is incorrect"
+            })
+        }
+
+        user.phone=phone;
+
+        if (newPassword){
+            user.password = await bcrypt.hash(newPassword,10)
+        }
+
+        await user.save()
+
+        res.json({
+            message:"Profile updated successfully"
+        })
     }
 )
 

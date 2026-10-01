@@ -344,7 +344,7 @@ return(
           </label>
           <label className="auth-field">
             <span>Role</span>
-           <select value={form.role} onChange={(e)=>handleChange("role",e.target.value)}>
+           <select className="selection" value={form.role} onChange={(e)=>handleChange("role",e.target.value)}>
               <option value="admin">Admin</option>
               <option value="superadmin">Superadmin</option>
             </select>

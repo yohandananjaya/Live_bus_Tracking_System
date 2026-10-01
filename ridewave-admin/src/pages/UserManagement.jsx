@@ -1,9 +1,13 @@
+import { DeleteIcon } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import { FaDeleteLeft } from 'react-icons/fa6';
+import { MdDelete } from 'react-icons/md';
 import { toast } from 'react-toastify';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [admins,setAdmins]=useState([])
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
@@ -14,6 +18,25 @@ const UserManagement = () => {
     role: 'admin',
     permissions: []
   });
+
+  const fetchAdmins = async () =>{
+    try{
+      const token = localStorage.getItem("token")
+      const response = await fetch(
+        "http://localhost:5000/api/auth/admins",
+        {
+          headers:{
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      const data = await response.json()
+
+      setAdmins(data)
+    }catch(error){
+      console.error(error)
+    }
+  }
 
   const availablePermissions = [
     { id: 'view_reports', label: 'View Reports (Support/SOS)' },
@@ -89,26 +112,50 @@ const UserManagement = () => {
     }
   };
 
+const handleDelete = async (id) =>{
+  const confirmDelete = window.confirm("This user going to be deleted?")
+  if(!confirmDelete) return;
+
+  try {
+    const token = localStorage.getItem("token");
+    await fetch(
+      `http://localhost:5000/api/auth/admins/${id}`,
+      {
+        method:"DELETE",
+        headers:{
+        Authorization: `Bearer ${token}`
+      }
+    }
+    );
+    fetchAdmins();
+  }catch(error){
+
+    console.error(error)
+  }
+}
+
   return (
     <section className="panel">
-      <header className="panel-header">
+      <header className="panel-head">
         <div>
           <h2>Staff & User Management</h2>
           <p>Create and manage accounts for your team members.</p>
         </div>
-        <button className="action-btn" onClick={() => setIsModalOpen(true)}>+ Add User</button>
+        <button className="action-btn" onClick={() => setIsModalOpen(true)}>Add User</button>
       </header>
 
-      <div className="table-responsive">
+      <div className="table-wrap">
         <table className="bus-table">
           <thead>
             <tr>
               <th>Name</th>
               <th>Username</th>
               <th>Email</th>
+              <th>Phone</th>
               <th>Role</th>
               <th>Permissions</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -117,6 +164,7 @@ const UserManagement = () => {
                 <td>{user.firstname} {user.lastname}</td>
                 <td>{user.username}</td>
                 <td>{user.email}</td>
+                <td>{user.phone}</td>
                 <td>
                   <span className={`chip ${user.role === 'superadmin' ? 'chip-green' : 'chip-blue'}`}>
                     {user.role}
@@ -130,6 +178,11 @@ const UserManagement = () => {
                     {user.active ? 'Active' : 'Inactive'}
                   </span>
                 </td>
+                <td style={{justifyContent:"center",display:"flex"}}>
+                 
+                    <button className='deletebutton' onClick={()=>handleDelete(user._id)}><MdDelete fontSize={25} color='red' style={{marginTop:"5px"}}/></button>
+                    </td>
+                
               </tr>
             ))}
             {users.length === 0 && (
@@ -142,44 +195,51 @@ const UserManagement = () => {
       </div>
 
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="report-modalNew" onClick={() => setIsModalOpen(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
             <h3>Create New Staff Member</h3>
-            <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+            <form onSubmit={handleAddUser} className="auth-formSuper">
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <div style={{ flex: 1 }}>
-                  <label>First Name</label>
-                  <input type="text" required value={formData.firstname} onChange={e => setFormData({...formData, firstname: e.target.value})} style={inputStyle} />
+                  <label className="auth-field">
+                    <span>First Name</span>
+                      <input type="text" id="firstname" name="name" required value={formData.firstname} onChange={e => setFormData({...formData, firstname: e.target.value})} />
+                  </label>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label>Last Name</label>
-                  <input type="text" required value={formData.lastname} onChange={e => setFormData({...formData, lastname: e.target.value})} style={inputStyle} />
+                  <label className="auth-field"><span>Last Name</span>
+                   <input type="text" id="lastname" name="lastname"  required value={formData.lastname} onChange={e => setFormData({...formData, lastname: e.target.value})} />
+                  </label>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '1rem' }}>
+             
                 <div style={{ flex: 1 }}>
-                  <label>Username</label>
-                  <input type="text" required value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} style={inputStyle} />
+                  <label className="auth-field"><span>Username</span>
+                    <input type="text" id="username" name="username" required value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})}/>
+                  </label>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label>Email</label>
-                  <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} style={inputStyle} />
+                  <label className="auth-field"><span>Email</span>
+                 <input type="email" id="email" name="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}/>
+                  </label>
                 </div>
-              </div>
+              
               <div style={{ display: 'flex', gap: '1rem' }}>
                  <div style={{ flex: 1 }}>
-                  <label>Password</label>
-                  <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={inputStyle} />
+                  <label className="auth-field"><span>Password</span>
+                  <input type="password" id="password" name="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}/>
+                  </label>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label>Phone</label>
-                  <input type="text" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} style={inputStyle} />
+                  <label className="auth-field"><span>Phone</span>
+                <input type="text" id="phone" name="phone" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}/>
+                  </label>
                 </div>
               </div>
               
               <div>
-                <label>Account Role</label>
-                <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} style={inputStyle}>
+                <label className="auth-field"><span>Account Role</span></label>
+                <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="selection">
                   <option value="admin">Admin (Restricted)</option>
                   <option value="superadmin">Super Admin (Full Access)</option>
                 </select>
@@ -204,7 +264,8 @@ const UserManagement = () => {
               )}
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
-                <button type="button" className="action-btn" style={{ background: '#e2e8f0', color: '#475569' }} onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="button" className="ghost-btn"
+              onClick={() => setIsModalOpen(false)}>Cancel</button>
                 <button type="submit" className="action-btn">Create User</button>
               </div>
             </form>
@@ -215,7 +276,9 @@ const UserManagement = () => {
   );
 };
 
-const inputStyle = {
+
+
+const selectStyle = {
   width: '100%',
   padding: '0.75rem',
   border: '1px solid #e2e8f0',
