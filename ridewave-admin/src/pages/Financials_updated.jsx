@@ -23,7 +23,7 @@ const Financials = () => {
 
   function calculatePayouts(bookingsData) {
     const busMap = {};
-    const COMMISSION_RATE = 0.25;
+    const COMMISSION_RATE = 0.05;
 
     bookingsData.forEach((booking) => {
       if (booking.payoutSettled) return; // Ignore settled bookings
@@ -435,7 +435,7 @@ const Financials = () => {
         <h3>Financial Workflow</h3>
         <ul>
           <li><strong>Revenue:</strong> Only counts confirmed & completed bookings.</li>
-          <li><strong>Refunds:</strong> 10% deduction (5% admin, 5% driver fee) when passengers cancel.</li>
+          <li><strong>Refunds:</strong> 10% deduction (Full 10% to driver as a penalty fee) when passengers cancel.</li>
           <li><strong>Payouts:</strong> Settling creates a record in the database which the Driver App reads immediately.</li>
         </ul>
       </article>

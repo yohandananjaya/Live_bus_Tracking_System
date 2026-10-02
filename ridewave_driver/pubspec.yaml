@@ -26,11 +26,13 @@ dependencies:
   # Icons
   cupertino_icons: ^1.0.2
   geocoding: ^4.0.0
+  google_nav_bar: ^5.0.7
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true

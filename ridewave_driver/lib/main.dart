@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/login_screen.dart';
-import 'screens/dashboard.dart';
+import 'screens/main_navigation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,7 +44,7 @@ class _AuthCheckState extends State<AuthCheck> {
     bool loggedIn = prefs.getBool('isDriverLoggedIn') ?? false;
     String? busId = prefs.getString('driverBusId');
     if (loggedIn && busId != null) {
-      _screen = Dashboard(busId: busId);
+      _screen = MainNavigation(busId: busId);
     }
     setState(() => _isLoading = false);
   }

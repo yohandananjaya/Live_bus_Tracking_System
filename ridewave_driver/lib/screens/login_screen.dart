@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dashboard.dart';
+import 'main_navigation.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -54,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // Dashboard එකට යවනවා
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => Dashboard(busId: busId)),
+            MaterialPageRoute(builder: (context) => MainNavigation(busId: busId)),
           );
         }
       } else {

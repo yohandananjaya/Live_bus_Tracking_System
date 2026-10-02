@@ -254,10 +254,10 @@ class BookingsScreen extends StatelessWidget {
 
   // --- Cancel Booking Function (10% Refund Logic) ---
   Future<void> _cancelBooking(BuildContext context, String bookingDocId, String busId, List<dynamic> seats, String currentStatus, double price) async {
-    bool isPaid = currentStatus == 'confirmed';
+    bool isPaid = currentStatus == 'confirmed' || currentStatus == 'upcoming';
     double refundAmount = isPaid ? (price * 0.9) : price; 
-    double adminFee = isPaid ? (price * 0.05) : 0; 
-    double driverFee = isPaid ? (price * 0.05) : 0;
+    double adminFee = 0; // The entire 10% fee goes to the driver now
+    double driverFee = isPaid ? (price * 0.1) : 0;
 
     bool? confirm = await showDialog(
       context: context,

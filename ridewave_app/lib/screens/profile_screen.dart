@@ -5,6 +5,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart';
 import 'help_support_screen.dart';
 import 'about_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'notifications_screen.dart';
 import 'payment_methods_screen.dart';
 
@@ -20,11 +22,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String userName = "Loading...";
   String userEmail = "Loading...";
   String userInitials = "";
+  
+  int ticketCount = 0;
+  int alertsCount = 0;
+  int favoriteCount = 0;
+
+  StreamSubscription? _bookingsSub;
+  StreamSubscription? _alertsSub;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+  }
+
+  @override
+  void dispose() {
+    _bookingsSub?.cancel();
+    _alertsSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
@@ -51,8 +67,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
              userInitials = "P";
           }
         });
+        _listenToStats(user!.uid);
       }
     }
+  }
+
+  void _listenToStats(String uid) {
+    _bookingsSub = FirebaseFirestore.instance
+        .collection('bookings')
+        .where('userId', isEqualTo: uid)
+        .where('status', whereIn: ['confirmed', 'upcoming'])
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+      setState(() {
+        ticketCount = snapshot.docs.length;
+      });
+
+      List<String> activeBusIds = snapshot.docs.map((doc) => doc['busId'] as String).toSet().toList();
+      if (activeBusIds.isEmpty) {
+        setState(() {
+          alertsCount = 0;
+        });
+        _alertsSub?.cancel();
+        return;
+      }
+
+      _alertsSub?.cancel();
+      _alertsSub = FirebaseFirestore.instance
+          .collection('notifications')
+          .where('busId', whereIn: activeBusIds)
+          .snapshots()
+          .listen((alertSnap) {
+        if (!mounted) return;
+        setState(() {
+          alertsCount = alertSnap.docs.length;
+        });
+      });
+    });
   }
 
   void _signOut(BuildContext context) async {
@@ -207,7 +259,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 // Floating Stats Card (Overlapping the header)
                 Positioned(
-                  top: 340,
+                  top: 370,
                   left: 25,
                   right: 25,
                   child: _buildFloatingStatsCard(),
@@ -216,7 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             
             // Spacer for floating card
-            const SizedBox(height: 80),
+            const SizedBox(height: 100),
 
             // Settings Section
             Padding(
@@ -340,7 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Beautiful Dark Gradient Header
   Widget _buildHeaderBackground() {
     return Container(
-      height: 400,
+      height: 430,
       width: double.infinity,
       decoration: const BoxDecoration(
         borderRadius: BorderRadius.only(
@@ -408,11 +460,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStatItem(Icons.favorite_rounded, "3", "Favorites", Colors.redAccent),
+          _buildStatItem(Icons.favorite_rounded, "$favoriteCount", "Favorites", Colors.redAccent),
           Container(height: 40, width: 1, color: Colors.grey[300]),
-          _buildStatItem(Icons.confirmation_number_rounded, "1", "Tickets", Colors.orange),
+          _buildStatItem(Icons.confirmation_number_rounded, "$ticketCount", "Tickets", Colors.orange),
           Container(height: 40, width: 1, color: Colors.grey[300]),
-          _buildStatItem(Icons.notifications_active_rounded, "2", "Alerts", Colors.blue),
+          _buildStatItem(Icons.notifications_active_rounded, "$alertsCount", "Alerts", Colors.blue),
         ],
       ),
     );
