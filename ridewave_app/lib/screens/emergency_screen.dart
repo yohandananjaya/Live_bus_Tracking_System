@@ -89,7 +89,7 @@ class EmergencyScreen extends StatelessWidget {
                   const SizedBox(height: 15),
                   _buildContactCard(Icons.medical_services, "Ambulance", "1990", Colors.green),
                   const SizedBox(height: 15),
-                  _buildContactCard(Icons.security, "RideWave Hotline", "+94112345678", Colors.orange),
+                  _buildContactCard(Icons.security, "RideWave Hotline", "+94472345675", Colors.orange),
 
                   const SizedBox(height: 35),
 
