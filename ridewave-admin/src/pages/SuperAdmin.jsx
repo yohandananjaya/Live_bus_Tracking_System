@@ -59,7 +59,7 @@ const [editingId,setEditingId]=useState(null)
     try{
       const token = localStorage.getItem("token")
       const response = await fetch(
-        "http://localhost:5000/api/auth/admins",
+        `${API_URL}/api/auth/admins`,
         {
           headers:{
             Authorization: `Bearer ${token}`
@@ -93,7 +93,7 @@ if(editingId){
   const token = localStorage.getItem("token")
 
   await fetch(
-    `http://localhost:5000/api/auth/admins/${editingId}`,
+    `${API_URL}/api/auth/admins/${editingId}`,
     {
       method: "PUT",
       headers: {
@@ -133,7 +133,7 @@ setEditingId(null)
 const token = localStorage.getItem("token")
 console.log("JWT:",token)
 const response = await fetch(
-"http://localhost:5000/api/auth/create-admin",
+`${API_URL}/api/auth/create-admin`,
 {
 method: "POST",
 headers: {
@@ -195,7 +195,7 @@ const handleDelete = async (id) =>{
   try {
     const token = localStorage.getItem("token");
     await fetch(
-      `http://localhost:5000/api/auth/admins/${id}`,
+      `${API_URL}/api/auth/admins/${id}`,
       {
         method:"DELETE",
         headers:{

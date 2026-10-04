@@ -23,7 +23,7 @@ const UserManagement = () => {
     try{
       const token = localStorage.getItem("token")
       const response = await fetch(
-        "http://localhost:5000/api/auth/admins",
+        `${API_URL}/api/auth/admins`,
         {
           headers:{
             Authorization: `Bearer ${token}`
@@ -47,7 +47,7 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/auth/admins", {
+      const response = await fetch(`{API_URL}/api/auth/admins`, {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem('token')}`
         }
@@ -87,7 +87,7 @@ const UserManagement = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/create-admin", {
+      const response = await fetch(`${API_URL}/api/auth/create-admin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -119,7 +119,7 @@ const handleDelete = async (id) =>{
   try {
     const token = localStorage.getItem("token");
     await fetch(
-      `http://localhost:5000/api/auth/admins/${id}`,
+      `${API_URL}/api/auth/admins/${id}`,
       {
         method:"DELETE",
         headers:{
