@@ -8,10 +8,16 @@ const authRoutes = require("./routes/auth")
 
 const app = express()
 
+console.log("PORT=", process.env.PORT)
+
 app.use(cors());
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+
+app.get("/", (req, res) => {
+res.send("RideWave API Running");
+});
 
 mongoose
     .connect(process.env.MONGO_URI)
@@ -28,6 +34,4 @@ mongoose
         console.error("MongoDB Error:",err)
     })
 
-    app.get("/", (req, res) => {
-res.send("RideWave API Running");
-});
+
