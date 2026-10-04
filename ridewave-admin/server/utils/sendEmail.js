@@ -1,8 +1,7 @@
+//sending emails to newly created account holders credentials and message to change their passwords
+
 const nodemailer = require("nodemailer");
  
-
-
-
 const transporter = nodemailer.createTransport({
 service: "gmail",
 auth: {
