@@ -27,3 +27,7 @@ mongoose
     .catch((err)=>{
         console.error("MongoDB Error:",err)
     })
+
+    app.get("/", (req, res) => {
+res.send("RideWave API Running");
+});
