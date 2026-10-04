@@ -4,6 +4,8 @@ import { FaDeleteLeft } from 'react-icons/fa6';
 import { MdDelete } from 'react-icons/md';
 import { toast } from 'react-toastify';
 
+import {API_URL} from "../config"
+
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
