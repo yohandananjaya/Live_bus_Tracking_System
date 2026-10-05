@@ -200,13 +200,20 @@ router.post("/create-admin",
         });
 
         const sendCredentials = require("../utils/sendEmail");
-        await sendCredentials({
+
+        try {
+            await sendCredentials({
             email,
             firstname,
             username,
             password,
             role
         })
+
+        } catch (emailError) {
+            console.error(emailError)
+        }
+
 
         res.status(201).json({
             message: "User created successfully",

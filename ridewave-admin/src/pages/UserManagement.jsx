@@ -49,7 +49,7 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`{API_URL}/api/auth/admins`, {
+      const response = await fetch(`${API_URL}/api/auth/admins`, {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem('token')}`
         }
@@ -97,14 +97,23 @@ const UserManagement = () => {
         },
         body: JSON.stringify({ ...formData, permissions: finalPermissions })
       });
+console.log("STATUS:", response.status);
 
+const data = await response.json();
+
+console.log("DATA:", data);
       if (response.ok) {
+        const newUser = await response.json();
+
+setUsers(prev => [...prev, newUser.user]);
+
         toast.success("User added successfully");
         setIsModalOpen(false);
-        fetchUsers();
+        
         setFormData({
           firstname: '', lastname: '', username: '', email: '', password: '', phone: '', role: 'admin', permissions: []
         });
+        await fetchUsers();
       } else {
         const err = await response.json();
         toast.error(err.message || "Failed to add user");
@@ -129,7 +138,7 @@ const handleDelete = async (id) =>{
       }
     }
     );
-    fetchAdmins();
+    fetchUsers();
   }catch(error){
 
     console.error(error)
