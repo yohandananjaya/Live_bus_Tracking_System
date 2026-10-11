@@ -117,38 +117,62 @@ class TripHistoryScreen extends StatelessWidget {
                     Expanded(
                       child: TabBarView(
                         children: [
-                          // --- TAB 1: Trip Revenue ---
+                          // --- TAB 1: Pending Trip Revenue ---
                           StreamBuilder<QuerySnapshot>(
                             stream: FirebaseFirestore.instance
-                                .collection('buses')
-                                .doc(busId)
-                                .collection('trip_history')
-                                .orderBy('timestamp', descending: true)
+                                .collection('bookings')
+                                .where('busId', isEqualTo: busId)
                                 .snapshots(),
                             builder: (context, snapshot) {
                               if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                              if (snapshot.data!.docs.isEmpty) {
+                              
+                              // Filter and group by travelDate
+                              Map<String, double> pendingTrips = {};
+                              
+                              for (var doc in snapshot.data!.docs) {
+                                var data = doc.data() as Map<String, dynamic>;
+                                bool settled = data['payoutSettled'] == true;
+                                String status = data['status'] ?? '';
+                                
+                                // Only calculate for completed trips that haven't been settled
+                                if (!settled && status == 'completed') {
+                                  String date = data['travelDate'] ?? 'Unknown Date';
+                                  double price = (data['totalPrice'] ?? 0).toDouble();
+                                  
+                                  // Deduct 5% commission
+                                  double afterCommission = price * 0.95;
+                                  
+                                  if (pendingTrips.containsKey(date)) {
+                                    pendingTrips[date] = pendingTrips[date]! + afterCommission;
+                                  } else {
+                                    pendingTrips[date] = afterCommission;
+                                  }
+                                }
+                              }
+
+                              if (pendingTrips.isEmpty) {
                                 return Center(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(Icons.history, size: 60, color: Colors.grey[300]),
                                       const SizedBox(height: 10),
-                                      Text("No trip history yet", style: TextStyle(color: Colors.grey[500])),
+                                      Text("No pending revenue", style: TextStyle(color: Colors.grey[500])),
                                     ],
                                   ),
                                 );
                               }
+                              
+                              List<String> dates = pendingTrips.keys.toList();
+                              // Sort descending
+                              dates.sort((a, b) => b.compareTo(a));
 
                               return ListView.builder(
                                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                itemCount: snapshot.data!.docs.length,
+                                itemCount: dates.length,
                                 itemBuilder: (context, index) {
-                                  var doc = snapshot.data!.docs[index];
-                                  var data = doc.data() as Map<String, dynamic>;
-                                  double revenue = (data['revenue'] ?? 0).toDouble();
-                                  Timestamp? time = data['timestamp'];
-                                  String dateStr = time != null ? DateFormat('yyyy-MM-dd – hh:mm a').format(time.toDate()) : "Unknown Date";
+                                  String dateStr = dates[index];
+                                  double revenue = pendingTrips[dateStr]!;
 
                                   return Card(
                                     elevation: 2,
@@ -159,13 +183,14 @@ class TripHistoryScreen extends StatelessWidget {
                                       leading: Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
-                                        child: const Icon(Icons.attach_money, color: Colors.green),
+                                        child: const Icon(Icons.account_balance_wallet, color: Colors.green),
                                       ),
-                                      title: Text("Rs. $revenue", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
-                                      subtitle: Text("Ended on: $dateStr", style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                        onPressed: () => _deleteItem(doc.id),
+                                      title: Text("Rs. ${revenue.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green)),
+                                      subtitle: Text("Trip Date: $dateStr", style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                                      trailing: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(15)),
+                                        child: const Text("PENDING", style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
                                       ),
                                     ),
                                   );

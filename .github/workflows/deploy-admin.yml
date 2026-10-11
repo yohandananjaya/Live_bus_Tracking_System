@@ -1,0 +1,49 @@
+name: Deploy RideWave Admin to Vercel
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'ridewave-admin/**'
+      - '.github/workflows/deploy-admin.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: ridewave-admin/package-lock.json
+
+      - name: Install Dependencies & Verify Build
+        working-directory: ./ridewave-admin
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        working-directory: ./ridewave-admin
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts via Vercel
+        working-directory: ./ridewave-admin
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel Production
+        working-directory: ./ridewave-admin
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

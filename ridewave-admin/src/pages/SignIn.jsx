@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config/api';
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ e.preventDefault();
 
 try {
 const response = await fetch(
-"http://localhost:5000/api/auth/login",
+`${API_BASE_URL}/api/auth/login`,
 {
 method: "POST",
 headers: {

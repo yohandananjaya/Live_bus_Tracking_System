@@ -49,9 +49,9 @@ const Sidebar = ({ onNavigate }) => {
     <div className="sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div className="sidebar-brand" style={{ flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '0.5rem', paddingTop: '1rem' }}>
         <img 
-          src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=300&h=300&fit=crop" 
-          alt="Brand Logo" 
-          style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+          src="/logo.png" 
+          alt="RideWave Logo" 
+          style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'contain', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
         />
         <div style={{ marginTop: '0.5rem' }}>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', background: 'linear-gradient(135deg, rgb(0, 255, 38), #2fff24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
