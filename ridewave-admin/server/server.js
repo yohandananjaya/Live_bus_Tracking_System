@@ -1,5 +1,5 @@
 require("dotenv").config();
-
+const PORT = process.env.PORT || 5000;
 const express = require("express")
 const mongoose = require("mongoose");
 const cors = require("cors")
@@ -8,22 +8,38 @@ const authRoutes = require("./routes/auth")
 
 const app = express()
 
-app.use(cors());
+console.log("PORT=", process.env.PORT)
+
+app.use(
+    cors({
+        origin:[
+          "http://localhost:5173",
+          //"https://your-vercel-app.vercel.app"  
+        ],
+        credentials: true
+    })
+);
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+
+app.get("/", (req, res) => {
+res.send("RideWave API Running");
+});
 
 mongoose
     .connect(process.env.MONGO_URI)
     .then(()=>{
         console.log("MongoDB Connected");
 
-        app.listen(process.env.PORT,()=>{
+        app.listen(PORT,"0.0.0.0",()=>{
             console.log(
-                `Server running on port ${process.env.PORT}`
+                `Server running on port ${PORT}`
             )
         })
     })
     .catch((err)=>{
         console.error("MongoDB Error:",err)
     })
+
+

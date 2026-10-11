@@ -5,6 +5,8 @@ import { MdDelete } from 'react-icons/md';
 import { toast } from 'react-toastify';
 import { API_BASE_URL } from '../config/api';
 
+import {API_URL} from "../config"
+
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -96,14 +98,23 @@ const UserManagement = () => {
         },
         body: JSON.stringify({ ...formData, permissions: finalPermissions })
       });
+console.log("STATUS:", response.status);
 
+const data = await response.json();
+
+console.log("DATA:", data);
       if (response.ok) {
+        const newUser = await response.json();
+
+setUsers(prev => [...prev, newUser.user]);
+
         toast.success("User added successfully");
         setIsModalOpen(false);
-        fetchUsers();
+        
         setFormData({
           firstname: '', lastname: '', username: '', email: '', password: '', phone: '', role: 'admin', permissions: []
         });
+        await fetchUsers();
       } else {
         const err = await response.json();
         toast.error(err.message || "Failed to add user");
@@ -128,7 +139,7 @@ const handleDelete = async (id) =>{
       }
     }
     );
-    fetchAdmins();
+    fetchUsers();
   }catch(error){
 
     console.error(error)

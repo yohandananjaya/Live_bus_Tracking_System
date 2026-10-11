@@ -40,7 +40,9 @@ const ProfileModal = ({
 
                     <input type="tel" 
                     value={user?.phone} 
-                    onChange={(e)=>setPhone(e.target.value)} />
+                    onChange={(e)=>setProfileForm({
+                        ...profileForm,
+                        phone:e.target.value                    })} />
                 </label>
 
                 <label className="auth-field">
