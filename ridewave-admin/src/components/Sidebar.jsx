@@ -92,7 +92,7 @@ const Sidebar = ({ onNavigate }) => {
         </button>
         
         <div className="user-card simple" onClick={()=>setProfileOpen(true)} style={{cursor:"pointer", display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(15, 36, 52, 0.4)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`} alt="User profile" className="user-card-photo" style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fff' }} />
+          <img src={`https://api.dicebear.com/10.x/big-ears/svg?seed=Sophie`} alt="User profile" className="user-card-photo" style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fff' }} />
           <div className="user-card-meta">
             <strong style={{ fontSize: '0.9rem', color: '#e2e8f0' }}>{userName}</strong>
             <p style={{ color: '#94a3b8', fontSize: '0.75rem', margin: '2px 0 0' }}>{userObj?.role === 'superadmin' ? 'Super Admin' : 'Staff Member'}</p>
