@@ -8,6 +8,7 @@ import { doc, setDoc,addDoc, collection, serverTimestamp } from 'firebase/firest
 import { useEffect } from "react";
 
 import { useMemo } from "react";
+import { API_BASE_URL } from "../config/api";
 
 
 const initialForm = {
@@ -59,7 +60,7 @@ const [editingId,setEditingId]=useState(null)
     try{
       const token = localStorage.getItem("token")
       const response = await fetch(
-        `${API_URL}/api/auth/admins`,
+        `${API_BASE_URL}/api/auth/admins`,
         {
           headers:{
             Authorization: `Bearer ${token}`
@@ -93,7 +94,7 @@ if(editingId){
   const token = localStorage.getItem("token")
 
   await fetch(
-    `${API_URL}/api/auth/admins/${editingId}`,
+    `${API_BASE_URL}/api/auth/admins/${editingId}`,
     {
       method: "PUT",
       headers: {
@@ -133,7 +134,7 @@ setEditingId(null)
 const token = localStorage.getItem("token")
 console.log("JWT:",token)
 const response = await fetch(
-`${API_URL}/api/auth/create-admin`,
+`${API_BASE_URL}/api/auth/create-admin`,
 {
 method: "POST",
 headers: {
@@ -195,7 +196,7 @@ const handleDelete = async (id) =>{
   try {
     const token = localStorage.getItem("token");
     await fetch(
-      `${API_URL}/api/auth/admins/${id}`,
+      `${API_BASE_URL}/api/auth/admins/${id}`,
       {
         method:"DELETE",
         headers:{

@@ -88,7 +88,7 @@ const Financials = () => {
 
   function calculatePayouts(bookingsData) {
     const payoutMap = {};
-    const COMMISSION_RATE = 0.25; // 25% admin commission
+    const COMMISSION_RATE = 0.05; // 5% admin commission
 
     // Group by Date AND Bus
     bookingsData.forEach((booking) => {

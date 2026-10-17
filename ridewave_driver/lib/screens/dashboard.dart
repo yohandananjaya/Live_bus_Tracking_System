@@ -379,7 +379,7 @@ class _DashboardState extends State<Dashboard> {
                         _actionCard("Bookings", Icons.confirmation_number_rounded, Colors.indigo[600]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => BookingsScreen(busId: widget.busId)))),
                         _actionCard("Seats", Icons.grid_view_rounded, Colors.lightBlue[600]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => SeatView(busId: widget.busId)))),
                         _actionCard("Report", Icons.warning_rounded, Colors.redAccent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => ReportScreen(busId: widget.busId)))),
-                        _actionCard("History", Icons.history_rounded, Colors.teal[600]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => TripHistoryScreen(busId: widget.busId)))),
+                        _actionCard("Revenue", Icons.account_balance_wallet_rounded, Colors.teal[600]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => TripHistoryScreen(busId: widget.busId)))),
                         _actionCard("Schedule", Icons.schedule_rounded, Colors.purple[500]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => TimeTableScreen(busId: widget.busId)))),
                       ],
                     ),
