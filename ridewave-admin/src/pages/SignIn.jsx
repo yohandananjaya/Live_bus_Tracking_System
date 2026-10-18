@@ -86,7 +86,7 @@ const SignIn = () => {
       // ===============================
 
       if (role === "superadmin") {
-        navigate("/super", { replace: true });
+        navigate("/staff", { replace: true });
       } else if (role === "admin") {
         navigate(destination, { replace: true });
       } else {
