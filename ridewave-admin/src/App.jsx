@@ -48,7 +48,6 @@ function App() {
       
       <Routes>
         <Route path="/signin" element={<PublicOnlyRoute><SignIn /></PublicOnlyRoute>} />
-        <Route path="/signup" element={<PublicOnlyRoute><SignUp /></PublicOnlyRoute>} />
 
         <Route element={<ProtectedRoutes />}>
           <Route path="/" element={<MainLayout />}>

@@ -195,19 +195,9 @@ const SignIn = () => {
 
           </form>
 
-          <div className="auth-divider">
-            <span>or</span>
-          </div>
+         
 
-          <p className="auth-footnote">
-            Need an account?{" "}
-            <Link
-              to="/signup"
-              className="auth-link"
-            >
-              Sign up
-            </Link>
-          </p>
+          
 
         </div>
       </div>
