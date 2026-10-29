@@ -66,8 +66,8 @@ class BookingsScreen extends StatelessWidget {
                           dividerColor: Colors.transparent,
                           tabs: [
                             Tab(text: "Search"), 
-                            Tab(text: "Upcoming"),
-                            Tab(text: "History"),
+                            Tab(text: "Booked Seats"),
+                            Tab(text: "Refund"),
                           ],
                         ),
                       ),
